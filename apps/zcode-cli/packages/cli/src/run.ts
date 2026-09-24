@@ -425,6 +425,16 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
     return 0;
   }
 
+  // 延迟导入：配置页依赖 provider 配置体系，仅在 --web-config 时加载。
+  if (parsed.values["web-config"] === true) {
+    const { runWebConfigCommand, resolveWebConfigPort } = await import(
+      "./web-config/webConfigCommand.js"
+    );
+    return await runWebConfigCommand(ctx, {
+      port: resolveWebConfigPort(parsed.values["web-port"] as string | undefined),
+    });
+  }
+
   if (
     options.memoryBench &&
     (typeof parsed.values.prompt !== "string" || parsed.positionals.length > 0)

@@ -48,6 +48,8 @@ Options:
   -c, --continue        Resume the latest session for the current directory
   --json           Print machine-readable JSON where supported
   --no-browser     Print the OAuth URL without opening a browser
+  --web-config     Open the local web config page for custom Claude/OpenAI-compatible models
+  --web-port <port>  Port for the web config page (default 3210, auto-increments if busy)
   --no-color       Disable ANSI colors
   --verbose        Print extra diagnostic detail
 

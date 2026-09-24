@@ -48,6 +48,8 @@ export const zhCN: ZCodeCopy = {
   -c, --continue        恢复当前目录最近的 session
   --json           在支持的命令中输出机器可读 JSON
   --no-browser     不打开浏览器，只打印 OAuth URL
+  --web-config     打开本地 Web 配置页，管理自定义 Claude/OpenAI 兼容模型
+  --web-port <port>  Web 配置页端口（默认 3210，被占用时自动顺延）
   --no-color       禁用 ANSI 颜色
   --verbose        打印更多诊断信息
 

@@ -81,6 +81,12 @@ export const parseGlobalArgs = (argv: string[]) =>
       surface: {
         type: "string",
       },
+      "web-config": {
+        type: "boolean",
+      },
+      "web-port": {
+        type: "string",
+      },
 
       // 在全局注册，run.ts 收集后透传给 plugins-command，不污染其他命令的选项语义。
       all: {
