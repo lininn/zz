@@ -309,3 +309,6 @@ export type {
   FeedbackTicketType,
 } from "@zcode/shared";
 export { IClientConfigService } from "./client-config/clientConfig.js";
+
+export { ICrewService } from "./crew/contract.js";
+export { ICrewAgentCatalogService } from "./crew/agentCatalogContract.js";

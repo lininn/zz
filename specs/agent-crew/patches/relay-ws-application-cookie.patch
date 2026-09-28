@@ -1,0 +1,24 @@
+--- a/src/server/proxy.js
++++ b/src/server/proxy.js
+@@ -159,6 +159,10 @@
+   ch.on('close', closePhone);
+   ch.on('error', closePhone);
++  const applicationCookie = filterReqHeaders(upgradeReq.headers).cookie;
+   ch.send(ctrlFrame({ t: 'req', path: upgradeReq.url, headers: {
++    // HTTP 已保留应用 cookie；WS 也必须透传，否则外层 open 后 PC 鉴权仍返回 401。
++    // 复用 HTTP 过滤器，只传应用 cookie，不泄漏 relay 登录/设备凭据。
++    ...(applicationCookie ? { cookie: applicationCookie } : {}),
+     origin: upgradeReq.headers.origin || '',
+     'sec-websocket-protocol': upgradeReq.headers['sec-websocket-protocol'] || ''
+   } }));
+--- a/src/connector/forwarder.js
++++ b/src/connector/forwarder.js
+@@ -77,6 +77,8 @@
+     const protocols = String(meta.headers?.['sec-websocket-protocol'] || '')
+       .split(',').map(value => value.trim()).filter(Boolean);
+     if (meta.headers?.origin) headers.origin = meta.headers.origin;
++    // relay 已剥离自己的 cookie；保留 PC 应用登录态，不能仅凭外层 WS open 判断成功。
++    if (meta.headers?.cookie) headers.cookie = meta.headers.cookie;
+     localWs = new WebSocket(origin + (meta.path || '/'), protocols, {
+       headers,
+       handshakeTimeout: config.handshakeTimeoutMs,

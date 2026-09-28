@@ -1,3 +1,4 @@
+import { closeCrewRuntimes, handleCrewRuntime } from "./crew-runtime.js";
 import { querySessionDebug } from "./session-debug.js";
 import {
   zcodePluginsCancelOperationParamsSchema,
@@ -357,7 +358,7 @@ export class ZCodeProtocolAgentServer {
   /** 进程资源关闭，不使用会删除产品会话/发布 session.removed 的 session/close。 */
   shutdown(): Promise<void> {
     if (this.shutdownPromise) return this.shutdownPromise;
-    this.shutdownPromise = this.runtimeResources.close();
+    this.shutdownPromise = Promise.all([this.runtimeResources.close(), closeCrewRuntimes(this.context)]).then(() => undefined);
     const error = new Error("ZCode Protocol runtime stopping");
     this.disconnectClient(error);
     this.messageSink = undefined;
@@ -566,6 +567,8 @@ export class ZCodeProtocolAgentServer {
         return this.requireV4Gateway().handleCommand(request.params);
       case V4_METHODS.commandsQuery:
         return this.requireV4Gateway().queryCommands(request.params);
+      case zcodeProtocolMethods.crewRuntime:
+        return await handleCrewRuntime(this.context, request.params);
       case zcodeProtocolMethods.sessionCreate:
         return await createSession(this.context, request.params, request.trace);
       case zcodeProtocolMethods.sessionResume:

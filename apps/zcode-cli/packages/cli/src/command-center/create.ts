@@ -5,6 +5,7 @@ import {
 } from "../command-center-custom.js";
 import { formatNewSessionResult, formatResumeResult } from "./formatters.js";
 import { handleCustomCommand } from "./handlers/custom.js";
+import { handleDelegateCommand } from "./handlers/delegate.js";
 import { handleDwfCommand } from "./handlers/dwf.js";
 import { handleEffortCommand } from "./handlers/effort.js";
 import { handleExpertCommand } from "./handlers/expert.js";
@@ -232,6 +233,14 @@ export function createCommandCenter(deps: CommandCenterDeps): TuiSubmitPrompt {
 
       if (command.name === "dwf") {
         return handleDwfCommand(command.args, deps);
+      }
+
+      if (command.name === "delegate") {
+        return handleDelegateCommand(
+          command.args,
+          deps,
+          command.rawName === "claude" ? "claude-cli" : command.rawName === "codex" ? "codex-cli" : undefined,
+        );
       }
 
       if (command.name === "rewind") {

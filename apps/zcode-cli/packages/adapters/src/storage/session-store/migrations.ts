@@ -925,6 +925,18 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigration[] = [
     id: "0022_backfilled_session_reasoning",
     sql: BACKFILLED_SESSION_REASONING_MIGRATION_SQL,
   },
+  {
+    appVersion: "0.16.9",
+    id: "0023_external_runtime_queue",
+    sql: EXTERNAL_RUNTIME_QUEUE_MIGRATION_SQL,
+  },
+  {
+    appVersion: "0.16.9",
+    id: "0024_external_runtime_native_session",
+    sql: EXTERNAL_RUNTIME_NATIVE_SESSION_MIGRATION_SQL,
+  },
 ];
 import { OFFICIAL_GLM_SELECTION_MIGRATION_SQL } from "./migrations/0021-official-glm-selection.js";
 import { BACKFILLED_SESSION_REASONING_MIGRATION_SQL } from "./migrations/0022-backfilled-session-reasoning.js";
+import { EXTERNAL_RUNTIME_QUEUE_MIGRATION_SQL } from "./migrations/0023-external-runtime-queue.js";
+import { EXTERNAL_RUNTIME_NATIVE_SESSION_MIGRATION_SQL } from "./migrations/0024-external-runtime-native-session.js";

@@ -1,0 +1,65 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createCrewExternalRuntime } from "../src/crew/crewExternalRuntime.js";
+import { externalCrewFixture } from "./crewExternalRuntimeFixture.js";
+
+for (const missing of ["bridge", "method"] as const) {
+  test(`preflight reports ${missing} unavailability without claiming binary failure or starting tasks`, async () => {
+    const f = await externalCrewFixture();
+    try {
+      if (missing === "bridge") delete f.f.agent.crewRuntime;
+      else
+        f.f.agent.crewRuntime = async () => {
+          throw Object.assign(new Error("Method not found: crew/runtime"), { code: -32601 });
+        };
+      const detail = await f.service.get({ groupId: f.group.groupId });
+      const runtime = createCrewExternalRuntime({
+        agent: f.f.agent,
+        leases: f.leases,
+        preflight: f.runtime.preflight,
+        start: async () => {
+          throw new Error("probe must not start");
+        },
+        prompt: () => {
+          throw new Error("probe must not create prompt");
+        },
+      });
+      const probe =
+        missing === "bridge"
+          ? await runtime.probeMember(detail.group.workspaceBinding!, detail.resolvedMembers[0]!)
+          : detail.runtimeAvailability?.[0];
+      assert.equal(probe?.available, false);
+      assert.match(probe?.reason ?? "", /crew\/runtime.*unavailable/);
+      assert.equal(f.calls.length, 0);
+      assert.equal(detail.executions.length, 0);
+    } finally {
+      await f.close();
+    }
+  });
+}
+
+test("preflight hides unknown exception details and preserves genuine runtime verdicts", async () => {
+  const f = await externalCrewFixture();
+  try {
+    const original = f.f.agent.crewRuntime!;
+    f.f.agent.crewRuntime = async () => {
+      throw new Error("private process diagnostic");
+    };
+    const failed = await f.service.get({ groupId: f.group.groupId });
+    assert.equal(failed.runtimeAvailability?.[0]?.reason, "crew.runtimeUnavailable");
+    f.f.agent.crewRuntime = original;
+    f.available(false);
+    const unavailable = await f.service.get({ groupId: f.group.groupId });
+    assert.equal(unavailable.runtimeAvailability?.[0]?.reason, "binary_not_found");
+    assert.equal(unavailable.runtimeAvailability?.[0]?.available, false);
+    f.available(true);
+    assert.equal(
+      (await f.service.get({ groupId: f.group.groupId })).runtimeAvailability?.[0]?.available,
+      true,
+    );
+    assert.ok(f.calls.every((command) => command.action === "probe"));
+    assert.equal(f.tasks.size, 0);
+  } finally {
+    await f.close();
+  }
+});

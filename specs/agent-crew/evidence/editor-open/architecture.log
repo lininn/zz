@@ -1,0 +1,8 @@
+
+> zcode@3.14.0 architecture:check /Users/lininn/test/ZCode
+> node scripts/architecture/architecture-check.mjs check --changed
+
+architecture: OK
+violations: 0
+baseline: 0
+new: 0

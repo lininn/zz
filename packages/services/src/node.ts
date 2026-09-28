@@ -1,3 +1,11 @@
+import { ICrewAgentCatalogService } from "./crew/agentCatalogContract.js";
+import { CrewAgentCatalogService } from "./crew/agentCatalogService.js";
+import { ICrewService } from "./crew/contract.js";
+import { CrewService } from "./crew/crewService.js";
+import { recoverCrewConversations } from "./crew/crewRecovery.js";
+import { CrewWriteAdmission } from "./crew/crewAdmission.js";
+import { CrewLeaseStore, createCrewOwner, isCrewOwnerAlive } from "./crew/crewLease.js";
+import { createCrewRuntime } from "./crew/crewRuntime.js";
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
 import { randomBytes } from "node:crypto";
@@ -650,6 +658,7 @@ const providerProvisioningTriggerDisposers = new WeakMap<
 // dispose 链必须统一关闭：Windows 上句柄悬着会让宿主回收后临时目录 rm 撞 EBUSY
 // （stdioDesktopPresentationSurface 单测稳定复现），Linux 的 unlink-while-open 语义掩盖了泄漏。
 // 与其它侧表一样按 ServiceCollection 登记并在 dispose 时统一 close。
+const crewResources = new WeakMap<ServiceCollection, { stop(): Promise<void> }>();
 const sharedSqliteRepos = new WeakMap<ServiceCollection, ReadonlyArray<{ close(): void }>>();
 const accountRequestAuthServices = new WeakMap<ServiceCollection, IAccountRequestAuthService>();
 export type OffPeakRequestAuthBuilder = (
@@ -2082,7 +2091,8 @@ export function createLocalServices(options: {
           resolveOffPeakClientConfig: () => codingPlanSubscriptionService.getOffPeakClientConfig(),
           resolveOffPeakTaskService: () => offPeakTaskServiceForAgent,
         };
-  const zcodeAgentService = createZCodeAgentService({
+  let crewAdmissionForLifecycle: CrewWriteAdmission | undefined;
+  const rawZcodeAgentService = createZCodeAgentService({
     ...(agentAccountProviderConfigSource
       ? { accountProviderConfigSource: agentAccountProviderConfigSource }
       : {}),
@@ -2105,7 +2115,16 @@ export function createLocalServices(options: {
     // createLocalServices 虽然暴露了 reporter 注入点，旧装配却没有继续传给
     // ZCodeAgentProcessManager，导致 host 永远不向 main 上报 Agent spawn/exit，进程监控器
     // 因而看不到实际运行的 Agent，也无法验证只读到可写升级是否复用同一进程。
-    processLifecycleReporter: options?.processLifecycleReporter,
+    processLifecycleReporter: {
+      onSpawn: (event) => options?.processLifecycleReporter?.onSpawn(event),
+      onReady: (event) => options?.processLifecycleReporter?.onReady?.(event),
+      onError: (event) => options?.processLifecycleReporter?.onError?.(event),
+      onException: (event) => options?.processLifecycleReporter?.onException?.(event),
+      onExit: (event) => {
+        crewAdmissionForLifecycle?.onRuntimeExit(event.pid);
+        options?.processLifecycleReporter?.onExit(event);
+      },
+    },
     spawnFallbackCwd: options?.zcodeAgentSpawnFallbackCwd,
     // browser-use：host→main 执行桥透传给 agent service 的 onRequest browserExecute 路由。
     browserControlExecutor: options?.browserControlExecutor,
@@ -2269,6 +2288,11 @@ export function createLocalServices(options: {
           },
         }),
   });
+  const crewOwner = createCrewOwner();
+  const crewLeases = new CrewLeaseStore(undefined, crewOwner.id);
+  const crewAdmission = new CrewWriteAdmission(rawZcodeAgentService, crewLeases);
+  crewAdmissionForLifecycle = crewAdmission;
+  const zcodeAgentService = crewAdmission.wrap(rawZcodeAgentService);
   providerConnectivityAgentService = zcodeAgentService;
   // Helper health probe 短暂超时不应在 Computer Use turn 中途回收 Agent。resolver 会把 restart
   // 推迟到下一个 request/turn 边界；若 broker 确实已失效，当前 turn 会自然失败并由下一次请求恢复。
@@ -2302,6 +2326,16 @@ export function createLocalServices(options: {
     agentService: zcodeAgentService,
     taskIndexSyncer: zcodeTaskIndexSyncer,
     cuaProductMcpServerResolver,
+  });
+  const crewAgentCatalogService = new CrewAgentCatalogService();
+  const crewService = new CrewService({
+    ownerId: crewOwner.id,
+    isOwnerAlive: isCrewOwnerAlive,
+    runtime: createCrewRuntime({
+      agent: zcodeAgentService,
+      sessions: zcodeSessionService,
+      admission: crewAdmission,
+    }),
   });
   const gitCommitMessageGenerator = new GitCommitMessageGenerator({
     currentModelProvider: {
@@ -2578,6 +2612,8 @@ export function createLocalServices(options: {
     // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
     .register(IPluginManagementService, createPluginManagementService({ zcodeAgentService }))
     .register(ISubagentsService, subagentsService)
+    .register(ICrewService, crewService)
+    .register(ICrewAgentCatalogService, crewAgentCatalogService)
     .register(ICommandsService, createCommandsService({ isDesktopRuntime: true }))
     .register(
       IHooksService,
@@ -2651,6 +2687,19 @@ export function createLocalServices(options: {
   );
 
   // 见 sharedSqliteRepos 声明处注释：登记全部 tasks-index sqlite 句柄，dispose 链统一关闭
+  crewResources.set(services, {
+    async stop() {
+      crewAdmission.dispose();
+      await crewService.dispose();
+      await crewAgentCatalogService.dispose();
+      await crewAdmission.whenIdle();
+      crewLeases.close();
+      crewOwner.dispose();
+    },
+  });
+  void recoverCrewConversations(crewService).catch(() =>
+    createServiceLogger("agent-crew").warn(undefined, "群组启动恢复失败，等待显式重试"),
+  );
   sqliteReposToClose.push(taskIndexRepo);
   sharedSqliteRepos.set(services, sqliteReposToClose);
   return services;
@@ -2735,6 +2784,11 @@ function readTelemetryOAuthUserId(rawUserInfo: string | null): string {
 }
 
 export function disposeServiceResources(services: ServiceCollection): void {
+  void crewResources
+    .get(services)
+    ?.stop()
+    .catch(() => {});
+  crewResources.delete(services);
   // host process 退出前以前没有统一遍历本地服务做资源回收，
   // terminal/task wrapper 这类会拉起子进程的服务只能等宿主进程自己结束，时序上可能留下短暂残留。
   // 这里集中调用各服务的本地 disposeAll 钩子，把“退出 app = 回收所有托管资源”落成机械动作。
@@ -2770,6 +2824,8 @@ export function disposeServiceResources(services: ServiceCollection): void {
 }
 
 export async function disposeServiceResourcesAndWait(services: ServiceCollection): Promise<void> {
+  const crewStopped = crewResources.get(services)?.stop();
+  crewResources.delete(services);
   // app 关闭时 host 需要等 agent 进程树完成 graceful + force 清理。
   // 旧的同步 dispose 会在 host 退出时丢掉强杀 timer，导致 zcode-cli/app-server 变成孤儿进程。
   const disposableServices = [
@@ -2789,6 +2845,8 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
       service.disposeAll();
     }
   }
+
+  await crewStopped;
 
   // 等待托管的 Computer Use Helper 终止（best-effort）：Helper 是长生命周期高权限进程，服务释放语义必须显式
   // 收口它，不能只靠 launcher-pid watchdog / 进程退出兜底。

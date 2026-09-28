@@ -35,3 +35,7 @@ run = "mise exec -- node scripts/mise-run.mjs pnpm typecheck"
 [tasks.lint]
 description = "Run the root linter."
 run = "mise exec -- node scripts/mise-run.mjs pnpm lint"
+
+[tasks.zz]
+description = "快捷启动命令行 Agent CLI（开发模式）。"
+run = "mise exec -- node scripts/mise-run.mjs pnpm --filter @zcode/cli dev"

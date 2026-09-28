@@ -1,4 +1,10 @@
-import { createLocalServices, getAppConfigDir } from "@zcode/services/node";
+import { resolve } from "node:path";
+import {
+  createLocalServices,
+  getAppConfigDir,
+  resolveDefaultZCodeAgentCommand,
+} from "@zcode/services/node";
+import { createDevelopmentAgentCommandResolver } from "./developmentAgentCommand.js";
 import {
   materializeBundledZCodeBuiltinProviderConfig,
   readBundledZCodeBuiltinProviderConfig,
@@ -15,6 +21,14 @@ async function main(): Promise<void> {
   const staticRoot = process.env["ZCODE_WEB_STATIC_ROOT"]?.trim() || undefined;
   const authToken = process.env["ZCODE_SERVER_AUTH_TOKEN"]?.trim() || undefined;
   const services = createLocalServices({
+    ...(process.argv.includes("--agent-source")
+      ? {
+          zcodeAgentCommandResolver: createDevelopmentAgentCommandResolver(
+            resolve(import.meta.dirname, "../../.."),
+            resolveDefaultZCodeAgentCommand,
+          ),
+        }
+      : {}),
     zcodeBuiltinProviderConfigFilePath,
     providerProvisioningTargetEnabled: Boolean(authToken),
   });

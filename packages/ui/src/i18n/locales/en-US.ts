@@ -1,5 +1,306 @@
+import { homeChatEn } from "../../crew/homeChatMessages.js";
 /** English translations */
 const enUS: Record<string, string> = {
+  "crew.status.awaiting_user_approval": "Awaiting relay approval",
+  "crew.relay.settings": "Relay settings",
+  "crew.relay.mode": "Relay mode",
+  "crew.relay.mode.manual": "Manual",
+  "crew.relay.mode.semi": "Semi-automatic",
+  "crew.relay.mode.auto": "Automatic",
+  "crew.relay.modeHint":
+    "The root plan always needs approval. Manual approves every handoff; semi-automatic runs through hop K; automatic continues after plan approval.",
+  "crew.relay.autoHops": "Automatic hops K (0–8)",
+  "crew.relay.budgetMinutes": "Time budget (minutes)",
+  "crew.relay.budgetHint":
+    "Budget changes apply to new requests only. Existing relay chains keep their original budget.",
+  "crew.relay.hopLimit":
+    "Each root request allows at most 8 hops. Time budgets and safety checks apply in every mode, including manual approval.",
+  "crew.relay.summary": "{mode} · {minutes} minutes · Max 8 hops",
+  "crew.relay.hopsSummary": "Automatic through hop {hops}",
+  "crew.relay.pause": "Pause relay",
+  "crew.relay.resume": "Resume relay",
+  "crew.relay.pausedHint":
+    "New hops are paused; current executions continue. Resuming does not approve pending handoffs.",
+  "crew.relay.planTitle": "Plan awaiting approval",
+  "crew.relay.handoffTitle": "Task handoff",
+  "crew.relay.route": "{from} → {to}",
+  "crew.relay.automatic": "Automatic handoff",
+  "crew.relay.objective": "Next objective",
+  "crew.relay.context": "Handoff context",
+  "crew.relay.approvePlan": "Approve and start",
+  "crew.relay.approve": "Approve handoff",
+  "crew.relay.reject": "Reject",
+  "crew.relay.approvalBlocked":
+    "Approval is unavailable. Check pause, recovery and binding state, then refresh. You can still reject this handoff.",
+  "crew.relay.status.awaiting_user_approval": "Awaiting approval",
+  "crew.relay.status.dispatched": "Dispatched",
+  "crew.relay.status.rejected": "Rejected",
+  "crew.relay.status.blocked": "Stopped",
+  "crew.error.relayHopLimit": "Relay stopped: the maximum of 8 hops has been reached.",
+  "crew.error.relayBudgetExceeded": "Relay stopped: the root request time budget has expired.",
+  "crew.error.relayDuplicate":
+    "Relay stopped: this member and objective have already been requested.",
+  "crew.error.relayRuntimeUnavailable": "Relay stopped: the target member runtime is unavailable.",
+  "crew.error.relayRecoveryRequired":
+    "Relay stopped: recovery must be checked first. Tasks will not be replayed.",
+  "crew.error.relayBindingChanged": "Relay stopped: the workspace binding has changed.",
+  "crew.error.relayMemberNotFound":
+    "Relay stopped: the target member is missing or cannot be uniquely matched.",
+  "crew.error.relayCancelled": "Relay stopped: the execution was cancelled.",
+  "crew.error.relayFailed": "Relay stopped: the execution failed.",
+  "crew.error.relayNotFound":
+    "This relay approval no longer exists. Refresh to read the current state.",
+  "crew.error.relayDecisionConflict":
+    "A different decision has already been recorded for this handoff. Refresh to read the result.",
+  "crew.home.reason.passiveTimelineUnavailable":
+    "No loaded read-only V4 timeline exists on this connection; restoring history would run session hooks and was not attempted",
+  "crew.home.partialTimeline":
+    "Only the currently loaded timeline is shown; earlier history has no safe passive-read interface.",
+  "crew.home.runtimeIsolationMissing":
+    "The host has not provided trusted outer runtime isolation. An installed CLI cannot bypass this safety check.",
+  "crew.home.runtimeBridgeUnavailable":
+    "The Agent does not expose the crew runtime protocol. The development server must use the current source.",
+  "crew.home.sidebarTitle": "Crews",
+  "crew.home.unbound": "Unbound crews",
+  "crew.home.actions": "Actions for {name}",
+  "crew.home.emptyConversations": "No conversations yet",
+  ...homeChatEn,
+  "workspaceSidebar.organizeCrew": "Crews",
+  "crew.home.conversationUnavailable":
+    "Unable to open the selected conversation. Refresh to try again.",
+  "crew.home.loading": "Loading…",
+  "crew.home.chooseConversation":
+    "Select a crew conversation under a project to follow handoffs and execution progress.",
+  "crew.home.manage": "Manage agents and crews",
+  "crew.home.detailsUnavailable": "Detailed process unavailable ({reason})",
+  "crew.home.reason.taskNotCreated": "The execution has not created a task yet",
+  "crew.home.reason.runtimeReadFailed": "The bound runtime record could not be read",
+  "crew.home.reason.externalEventsUnavailable":
+    "The current external runtime interface does not expose step-by-step events",
+  "crew.home.reason.workspaceDisconnected": "The execution workspace is disconnected",
+  "crew.home.reason.emptyTimeline": "The task has no readable V4 timeline records",
+  "crew.home.runtimeState": "Runtime state: {state}",
+  "crew.home.executionSummary": "Summary returned by the runtime",
+  "crew.error.promptTooLarge":
+    "The role and current task exceed the external runtime input limit. Shorten them and retry.",
+  "crew.runtimeLabel": "Runtime",
+  "crew.runtime.zcode": "ZCode",
+  "crew.runtime.claude-cli": "Claude CLI",
+  "crew.runtime.codex-cli": "Codex CLI",
+  "crew.runtime.opencode-cli": "OpenCode CLI",
+  "crew.externalModel": "Model configuration is managed by the external CLI, not ZCode.",
+  "crew.memberRuntime": "Runtime for {name}",
+  "crew.runtimeVersion": "Version: {version}",
+  "crew.runtimeAvailable": "Available",
+  "crew.runtimeUnavailable": "Unavailable — no ZCode fallback.",
+  "crew.runtimeUnchecked": "Availability is not verified. Bind a workspace or refresh to check.",
+  "crew.permissionTitle": "Permission request from {name}",
+  "crew.permissionApprove": "Approve",
+  "crew.permissionDeny": "Deny and cancel",
+  "crew.permissionDenyHint":
+    "Denying cancels the execution. The workspace stays locked until a safe stop is confirmed.",
+  "crew.permissionUnsupported":
+    "This runtime cannot receive approval replies. Approval is disabled; deny to cancel the execution safely.",
+  "crew.error.runtimeUnavailable":
+    "The selected runtime is unavailable. Check the member status and reason, then refresh. No ZCode fallback was used.",
+  "crew.error.permissionUnsupported":
+    "This runtime does not support permission replies. Deny the request or cancel the execution.",
+  "crew.error.permissionNotFound":
+    "This permission request is no longer pending. Refresh to read the current execution state.",
+  "crew.error.externalFailed":
+    "The external runtime failed. Review the execution and check its runtime availability before retrying.",
+  "crew.missingTaskHint":
+    "This execution has no task reference and remains safely blocked. Cancel can still verify safety; the binding stays locked unless a safe stop is confirmed.",
+  "crew.activeHint":
+    "Execution is not finished. Refresh for progress or check recovery after a restart. Started tasks never replay automatically.",
+  "crew.error.absolutePathRequired": "Choose a directory with an absolute path.",
+  "crew.error.directoryRequired":
+    "The directory does not exist or is inaccessible. Select another directory.",
+  "crew.error.identityMismatch":
+    "Workspace identity does not match. Reselect the workspace instead of reusing only its path.",
+  "crew.error.remoteUnavailable":
+    "This remote workspace is not supported in P0. No local fallback was used.",
+  "crew.error.workspaceBusy":
+    "This workspace already has a writer. Wait for it to finish, then retry.",
+  "crew.error.groupBusy":
+    "The crew has unresolved executions and cannot be modified or rebound yet.",
+  "crew.error.workspaceUnbound": "Bind a workspace first.",
+  "crew.error.bindingChanged": "The workspace binding changed. Refresh before retrying.",
+  "crew.error.memberNotFound": "Members have changed. Refresh and select the recipient again.",
+  "crew.error.duplicateMemberId": "Member identities are duplicated. Check the configuration.",
+  "crew.error.messageConflict":
+    "This message ID already has different content. Edit the draft before sending again.",
+  "crew.error.groupNotFound": "This crew no longer exists. Return to the list and refresh.",
+  "crew.error.executionNotFound": "The execution no longer exists. Refresh the crew.",
+  "crew.error.taskNotReady":
+    "The execution is not ready yet. Refresh its status before cancelling again.",
+  "crew.error.recoveryRequired":
+    "Safe execution ownership could not be confirmed. Check recovery; it will not replay automatically.",
+  "crew.error.serviceClosed":
+    "The crew service has closed. Refresh the page or reconnect, then check the group list before submitting again.",
+  "crew.error.cancelled": "Execution cancelled.",
+  "crew.agentsTab": "Agent management",
+  "crew.groupsTab": "Group management",
+  "crew.catalogDescription": "Create reusable agents here, then select them in any crew.",
+  "crew.catalogEmpty": "No agents yet. Create an agent before adding members to a crew.",
+  "crew.catalogEmptyForGroup": "No catalog agents. Create agents in Agent management first.",
+  "crew.catalogUnavailable": "Agent catalog is unavailable on this connection.",
+  "crew.catalogReadError":
+    "Could not refresh the agent catalog. Displayed definitions may be outdated.",
+  "crew.createAgent": "Create agent",
+  "crew.editAgent": "Edit agent",
+  "crew.agentName": "Agent name",
+  "crew.systemPrompt": "System prompt",
+  "crew.defaultAccessMode": "Default access",
+  "crew.agentModel": "ZCode model",
+  "crew.reasoningLevel": "Reasoning level",
+  "crew.modelReadUnavailable":
+    "Model registry is unavailable. Existing selection is preserved; you may use the default model.",
+  "crew.modelNotAvailable":
+    "The saved model is not in this Host’s registry. Select an available model or use the default.",
+  "crew.limitTools": "Restrict ZCode tools",
+  "crew.toolAllowlist": "Allowed tool names",
+  "crew.inheritToolsHint":
+    "Use the runtime’s available tools, still subject to access permissions.",
+  "crew.toolAllowlistHint":
+    "One tool name per line. An empty list allows no tools; uncheck to inherit runtime tools.",
+  "crew.externalCapabilities":
+    "Fine-grained ZCode tool restrictions are not supported by external runtimes.",
+  "crew.agentValidation":
+    "Check the agent name, prompt length and tool list (up to 128 names, 200 characters each).",
+  "crew.groupReferencesHint":
+    "Select existing agents. This crew stores references and access overrides, not agent definitions.",
+  "crew.chooseAgents": "Select catalog agents",
+  "crew.groupAccessMode": "Access in this crew",
+  "crew.inheritAccess": "Use agent default ({access})",
+  "crew.readCannotEscalate": "A read-only agent cannot be elevated to write access by a crew.",
+  "crew.editAgentNamed": "Edit agent {name}",
+  "crew.deleteAgentNamed": "Delete agent {name}",
+  "crew.deleteAgentTitle": "Delete this agent?",
+  "crew.deleteAgentDescription":
+    "Delete “{name}” from the catalog. Agents referenced by a crew cannot be deleted.",
+  "crew.error.agentInUse":
+    "This agent is used by one or more crews. Remove all references before deleting it.",
+  "crew.error.agentNotFound": "A referenced agent no longer exists. Refresh and select again.",
+  "crew.error.duplicateAgentId": "Each agent can be selected only once in a crew.",
+  "crew.error.permissionEscalation": "A crew cannot grant write access to a read-only agent.",
+  "crew.error.capabilitiesUnsupported":
+    "This runtime does not support the requested model or tool configuration.",
+  "crew.conversations": "Conversations",
+  "crew.createConversation": "New conversation",
+  "crew.defaultConversation": "Default conversation",
+  "crew.untitledConversation": "Conversation {number}",
+  "crew.chooseConversation": "Open a conversation to view its messages and executions.",
+  "crew.error.conversationNotFound":
+    "This conversation no longer exists or belongs to another crew.",
+  "crew.title": "Agent Crew",
+  "crew.description": "Reusable agents · Shared directory · Manual, one-member dispatch",
+  "crew.createGroup": "Create crew",
+  "crew.editGroup": "Edit crew",
+  "crew.groupName": "Crew name",
+  "crew.remove": "Remove",
+  "crew.access.read": "Read only",
+  "crew.access.write": "Read and write",
+  "crew.rolePlaceholder":
+    "Describe this agent’s responsibilities, boundaries and expected deliverables.",
+  "crew.defaultModel": "Use default model",
+  "crew.validation": "Enter a crew name and select valid catalog references and permissions.",
+  "crew.save": "Save",
+  "crew.saving": "Saving…",
+  "crew.cancel": "Cancel",
+  "crew.workspace": "Shared workspace",
+  "crew.epoch": "Epoch {epoch}",
+  "crew.unboundHint":
+    "No directory bound. Copies do not inherit the original workspace or history.",
+  "crew.chooseWorkspace": "Choose an open workspace",
+  "crew.chooseDirectory": "Choose directory",
+  "crew.bind": "Bind",
+  "crew.rebind": "Rebind",
+  "crew.lockedHint":
+    "Editing and rebinding are locked while executions are queued, running or awaiting recovery.",
+  "crew.rebindHint":
+    "The service validates the directory and identity. Rebinding starts a new epoch without reusing past execution context.",
+  "crew.workspaceRequired":
+    "Open a workspace first, then select it here. Mobile does not create a new Agent or remote session.",
+  "crew.directoryError": "Could not select a directory. Try again or choose an open workspace.",
+  "crew.message": "Board message",
+  "crew.chooseMember": "Assign a member",
+  "crew.searchMembers": "Search name, role or member ID",
+  "crew.noMembersFound": "No members found",
+  "crew.clearMention": "Clear assignment to {name}",
+  "crew.clearRecipient": "Clear recipient",
+  "crew.removedRecipient": "The selected member no longer exists. Select again.",
+  "crew.messagePlaceholder":
+    "Write a message. Assign work using the member picker above; typed @ text never dispatches work.",
+  "crew.sendUnavailable": "Bind a workspace and resolve recovery-required state before sending.",
+  "crew.assignedHint": "Dispatch only to the one selected member.",
+  "crew.boardOnlyHint": "No member selected: post to the board without starting an execution.",
+  "crew.sending": "Sending…",
+  "crew.send": "Send",
+  "crew.members": "Current members",
+  "crew.configVersion": "Config version: {version}",
+  "crew.formerMember": "Former member",
+  "crew.board": "Board",
+  "crew.emptyBoard":
+    "No messages yet. Select a member to dispatch a task, or post a board-only message.",
+  "crew.you": "You",
+  "crew.executions": "Executions",
+  "crew.cancelExecution": "Cancel execution",
+  "crew.refresh": "Refresh",
+  "crew.serviceUnavailable": "Agent Crew is not available on this connection yet.",
+  "crew.readError":
+    "Could not refresh the crew. Displayed content may be outdated. Refresh to retry.",
+  "crew.commandTimeout":
+    "No response within 25 seconds. The operation may still complete; it was not cancelled. Your draft is kept. Check the group list and current state before retrying; nothing is resubmitted automatically.",
+  "crew.connectionClosed":
+    "The connection is closed. Refresh the page or reconnect; Retry cannot reopen this connection. The operation may already have completed. Your draft is kept. Check the group list and current state before submitting again.",
+  "crew.connectionUnavailable":
+    "The service is unreachable. Check the connection, refreshing the page or reconnecting if needed. The operation outcome is unknown. Your draft is kept; check the group list and current state before retrying.",
+  "crew.authentication":
+    "Authentication failed or expired. Sign in again, then refresh the page or reconnect. Your draft is kept.",
+  "crew.accessDenied":
+    "Permission denied. Check workspace and directory access before retrying. Your draft is kept.",
+  "directoryBrowser.errorAuthentication":
+    "Authentication failed or expired. Sign in again, then refresh the page or reconnect.",
+  "directoryBrowser.errorPermission":
+    "Permission denied. Check access to this directory, then retry or enter another path.",
+  "directoryBrowser.errorClosed":
+    "The connection is closed. Refresh the page or reconnect to browse directories. Retry cannot reopen this connection.",
+  "directoryBrowser.errorTimeout":
+    "No response within 25 seconds. Check the connection. Retry if it is still connected; otherwise refresh the page or reconnect.",
+  "directoryBrowser.errorUnavailable":
+    "The directory service is unreachable. Check the connection and retry; refresh the page or reconnect if the connection has closed.",
+  "crew.commandError":
+    "Operation did not complete. Check workspace access, member configuration or execution state and retry. Unsent input has been kept.",
+  "crew.back": "Back to crews",
+  "crew.edit": "Edit",
+  "crew.duplicate": "Copy as unbound crew",
+  "crew.copyName": "{name} (copy)",
+  "crew.delete": "Delete",
+  "crew.deleteTitle": "Delete this crew?",
+  "crew.deleteDescription":
+    "This deletes “{name}” and its board and execution records. This cannot be undone.",
+  "crew.deleteConversation": "Delete conversation “{name}”",
+  "crew.deleteConversationTitle": "Delete this conversation?",
+  "crew.deleteConversationDescription":
+    "This deletes “{name}” and its board messages and execution records. This cannot be undone.",
+  "crew.recoveryHint":
+    "Execution ownership is uncertain; it will not replay automatically. Check recovery and follow the service-reported state.",
+  "crew.recover": "Check recovery",
+  "crew.loading": "Loading crews…",
+  "crew.emptyTitle": "Collaborate with clearly defined roles",
+  "crew.emptyDescription":
+    "Create agents in Agent management, then create a crew and select its members.",
+  "crew.memberCount": "{count} members",
+  "crew.status.unbound": "Unbound",
+  "crew.status.idle": "Ready",
+  "crew.status.active": "Active",
+  "crew.status.queued": "Queued",
+  "crew.status.running": "Running",
+  "crew.status.succeeded": "Succeeded",
+  "crew.status.failed": "Failed",
+  "crew.status.cancelled": "Cancelled",
+  "crew.status.recovery_required": "Recovery required",
   "startPlan.recommendation.subagentDescription":
     "Your Start Plan has quota available for {model}. Switch this subagent’s model to the Start Plan?",
   "startPlan.recommendation.preferenceSaveFailed":
@@ -1531,7 +1832,7 @@ const enUS: Record<string, string> = {
   "directoryBrowser.hideHidden": "Hide hidden directories",
   "directoryBrowser.noSubdirs": "No subdirectories",
   "directoryBrowser.selectDir": "Select this directory",
-  "directoryBrowser.errorSystem": "Failed to get system info",
+  "directoryBrowser.errorSystem": "Failed to get system info: {error}",
   "directoryBrowser.errorReadDir": "Failed to read directory: {error}",
 
   // Update ready button
@@ -1747,6 +2048,23 @@ const enUS: Record<string, string> = {
   "webRemoteControl.botChannel.telegram.description": "Open this workspace from Telegram.",
   "webRemoteControl.botChannel.configure": "Configure in bot channels",
   "webRemoteControl.botChannel.manageBots": "Manage bots",
+  "webRemoteControl.relay.title": "Browser remote control (self-hosted relay)",
+  "webRemoteControl.relay.description":
+    "Sign in with your blog account on this machine to enable remote control. Only the bound account can control this computer from the relay URL in a mobile browser.",
+  "webRemoteControl.relay.status.bound": "Remote control enabled, bound account:",
+  "webRemoteControl.relay.status.unbound":
+    "Remote control disabled: sign in with your blog account to enable",
+  "webRemoteControl.relay.unavailable":
+    "Local connector is not running (remote control can only be configured on this machine)",
+  "webRemoteControl.relay.unreachable": "Cannot reach the local connector",
+  "webRemoteControl.relay.relayOnline": "Relay",
+  "webRemoteControl.relay.online": "online",
+  "webRemoteControl.relay.offline": "reconnecting",
+  "webRemoteControl.relay.username": "Blog account",
+  "webRemoteControl.relay.password": "Password",
+  "webRemoteControl.relay.login": "Sign in and enable remote control",
+  "webRemoteControl.relay.logout": "Disable remote control",
+  "webRemoteControl.relay.loginFailed": "Sign-in failed",
   "remote.title": "Connect remote environment",
   "remote.description":
     "Connect to a remote workspace over SSH, Server, WSL, or Docker, then choose a directory in the current window.",
@@ -5751,7 +6069,7 @@ const enUS: Record<string, string> = {
   "chat.error.collapseDetails": "Hide details",
   "chat.error.feedback": "Report issue",
   "chat.error.feedbackOpened": "Feedback opened with the error context attached",
-  "chat.error.noAvailableModel": "No model available. Upgrade or set a custom model.",
+  "chat.error.noAvailableModel": "No model available. Configure a custom model in Model Settings.",
   "chat.error.sendFailed": "Failed to send. Try again later.",
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
@@ -6792,6 +7110,7 @@ const enUS: Record<string, string> = {
   "cuaPermission.ready.sessionValidationHint":
     "ZCode will verify the Computer Use tools against the exact session when your first session starts.",
   "settings.computerUse.title": "Computer Use",
+  "settings.remoteControl.title": "Remote Control",
   "settings.computerUse.toggleLabel": "Enable Computer Use",
   "settings.computerUse.toggleDescription":
     "Turning this on enables Computer Use — its MCP server and skills.",

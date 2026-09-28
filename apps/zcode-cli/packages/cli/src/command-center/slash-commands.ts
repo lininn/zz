@@ -60,6 +60,15 @@ export function parseSlashCommand(input: string): SlashCommand | null {
     };
   }
 
+  if (rawName === "delegate" || rawName === "claude" || rawName === "codex") {
+    return {
+      args,
+      name: "delegate",
+      rawName,
+      type: "known",
+    };
+  }
+
   if (rawName === "fork") {
     return {
       args,

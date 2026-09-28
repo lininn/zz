@@ -9,12 +9,14 @@ import type { AgentOutput } from "@zcode/contracts";
 
 // local_dynamic_workflow 与 local_workflow 刻意分开：后者是 legacy `Workflow` 工具（不可取消），
 // 前者是 workflow run（经 DynamicWorkflowRunPort.cancel 可取消）。合成一个类型，取消分派就无法区分。
+// external_runtime 是外部 agent runtime 任务：停止走专属 cancel 通道，不进通用 stopBackgroundTask 分派。
 export type RuntimeTaskType =
   | "local_agent"
   | "local_bash"
   | "local_workflow"
   | "local_dynamic_workflow"
-  | "monitor_mcp";
+  | "monitor_mcp"
+  | "external_runtime";
 
 export interface RuntimeTaskUsageSnapshot {
   durationMs?: number;

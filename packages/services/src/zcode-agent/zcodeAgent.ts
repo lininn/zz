@@ -1,3 +1,4 @@
+import type { CrewRuntimeCommand, CrewRuntimeReply } from "@zcode/shared";
 import type { BackgroundBashOutputResult, SessionDebugSnapshot } from "@zcode/shared";
 /* eslint-disable max-lines -- ZCode agent service 接口集中声明 protocol/session/workspace 方法，拆分会增加 service descriptor 迁移成本。 */
 import type { Event, IDisposable } from "@zcode/rpc";
@@ -351,6 +352,8 @@ export interface ZCodeAgentSessionSubscribeParams extends ZCodeAgentSessionTarge
 // v4/conversation/frame 通知按 workspace fan-out 给 renderer。
 
 export interface ZCodeAgentConversationSubscribeParams extends ZCodeAgentSessionTarget {
+  /** Host 内部独立观察者，避免群组租约订阅替换 UI 的订阅。 */
+  subscriberScope?: string;
   /** 水位不变量：仅当客户端真持有该时刻一致状态才允许带。 */
   base?: { logEpoch: string; seq: number };
   visibility?: "foreground" | "background";
@@ -576,6 +579,9 @@ export interface IZCodeAgentService {
     params: ZCodeAgentWorkspaceTarget,
   ): Event<ZCodeAgentStorageStartupSnapshot>;
   initialize(params: ZCodeAgentWorkspaceTarget): Promise<ZCodeAgentInitializeResult>;
+  crewRuntime(
+    params: ZCodeAgentWorkspaceTarget & { command: CrewRuntimeCommand },
+  ): Promise<CrewRuntimeReply>;
   /**
    * 同步 App 全局运行时偏好到所有已活动 workspace；不得为此启动空闲 Agent。
    */

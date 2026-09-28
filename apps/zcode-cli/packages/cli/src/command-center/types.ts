@@ -238,6 +238,30 @@ export type CommandCenterApp = {
    * workflow run 的取消面，服务 `/dwf cancel`。runId ≡ taskId ≡ workId（同一把标识）。
    */
   cancelBackgroundTask?(taskId: string): Promise<BackgroundTaskCancelResult>;
+  dispatchExternalRuntime?(input: {
+    runtimeId?: string;
+    role: string;
+    accessMode: "read" | "write";
+    objective: string;
+    verificationCommands: string[][];
+    skipVerification: boolean;
+    networkProfile: "allowed" | "restricted" | "disabled";
+    allowDirtyWorkspace: boolean;
+    useWorktree: boolean;
+    unsafeTextFallback: boolean;
+    sessionId: string;
+    traceId: string;
+  }): Promise<{ taskId: string; queuePosition: number }>;
+  listExternalRuntimeTasks?(): Promise<
+    Array<{ taskId: string; runtimeId: string; runtimeState: string; pauseReason?: string }>
+  >;
+  cancelExternalRuntimeTask?(input: { taskId: string }): Promise<{ cancelled: boolean }>;
+  cleanupExternalRuntimeTask?(input: { taskId: string }): Promise<{ cleaned: boolean; detail?: string }>;
+  diffExternalRuntimeTask?(input: { taskId: string }): Promise<{
+    diff: string;
+    untracked: string[];
+    truncated: boolean;
+  }>;
   /**
    * workflow run 的恢复面，服务 `/dwf resume`。失败走结构化 reason 而不是 throw，
    * 命令原样呈现服务端裁定——`resumable` 绝不在客户端重新推导。

@@ -1,0 +1,10 @@
+✔ offline fixture provides explicit isolated conversations and controllable late reads/commands (5.464917ms)
+✔ relay fixture preserves settings and requires explicit root approval without replay on resume (2.203042ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 201.577291

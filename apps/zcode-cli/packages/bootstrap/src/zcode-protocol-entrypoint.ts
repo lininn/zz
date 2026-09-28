@@ -1,4 +1,6 @@
-import { createConfig } from "@zcode/adapters/config";
+import { createExternalRuntimeFacade, resolveOuterSandboxReady } from "./app/external-runtime.js";
+import { getCliStorageRoot } from "./app/paths.js";
+import { createConfig, resolvePath } from "@zcode/adapters/config";
 import { createNodeModelSelectionFacade } from "@zcode/provider-node";
 import { createNodeLoggerFactory } from "@zcode/adapters/logging";
 import {
@@ -283,6 +285,21 @@ export async function runZCodeProtocolAgent(
         }),
       cwd: options.cwd,
       env: options.env,
+      createCrewRuntimeFacade: (workspace) => createExternalRuntimeFacade({
+        recoverOnCreate: false,
+        dbPath: getSessionDbPath(configResult),
+        workingDirectory: workspace.workspacePath,
+        workspaceIdentity: workspace.workspaceIdentity?.trim() || workspace.workspacePath,
+        remoteSessionId: workspace.remoteSessionId,
+        cliStorageRoot: getCliStorageRoot(resolvePath(configResult.config.storage.dir)),
+        env: runtimeEnv,
+        // 无部署方的真实隔离证明时 fail-closed；RPC 永远不能声明该能力。
+        // options 与 env（ZCODE_CREW_OUTER_SANDBOX_READY）都是显式部署方声明通道。
+        outerSandboxReady: resolveOuterSandboxReady(
+          options.externalRuntime?.outerSandboxReady,
+          runtimeEnv,
+        ),
+      }),
       loggerFactory,
       mcpPort,
       mcpTelemetry: mcpTelemetryTracker,

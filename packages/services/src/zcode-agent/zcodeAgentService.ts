@@ -1,3 +1,9 @@
+import {
+  crewRuntimeCommandSchema,
+  crewRuntimeParamsSchema,
+  crewRuntimeReplySchema,
+  type CrewRuntimeCommand,
+} from "@zcode/shared";
 import { requestPluginReferenceCatalog } from "#src/zcode-agent/pluginReferenceCatalogRequest.js";
 import {
   localTtftFactsSchema,
@@ -3414,6 +3420,20 @@ export function createZCodeAgentService(
       );
     },
 
+    async crewRuntime(params: ZCodeAgentWorkspaceTarget & { command: CrewRuntimeCommand }) {
+      const command = crewRuntimeCommandSchema.parse(params.command);
+      // 查询/取消只能访问原进程；禁止失联后重建 runtime 并误认旧任务已停止。
+      const client =
+        command.action === "probe" || command.action === "start"
+          ? await getClient(params)
+          : await getReadOnlyClient(params, "existing-only");
+      return client.request(
+        zcodeProtocolMethods.crewRuntime,
+        crewRuntimeParamsSchema.parse({ workspace: buildWorkspaceRef(params), command }),
+        crewRuntimeReplySchema,
+      );
+    },
+
     async getWorkspaceRuntimeIdentity(params: ZCodeAgentWorkspaceTarget) {
       // 查询 runtime identity 只能观察现有进程，不能把 dormant workspace 变成活动进程。
       await getReadOnlyClient(params, "existing-only");
@@ -4962,7 +4982,7 @@ export function createZCodeAgentService(
         0,
         Math.round(performance.now() - providerRegistryStartedAt),
       );
-      const connection = resolveV4Connection(params);
+      const connection = resolveV4Connection(params, v4ConnectionIdFor(params.subscriberScope));
       const topic = conversationTopic(params.sessionId);
       const taskMetaStartedAt = performance.now();
       const resumeThoughtLevel = await automationTaskIndexRepo

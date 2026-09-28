@@ -12,6 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import {
+  Users,
   Archive,
   Blocks,
   CalendarClock,
@@ -157,7 +158,7 @@ export { WorkspaceSidebarCollapsedRail } from "@/WorkspaceSidebar/WorkspaceSideb
 
 type TaskOrganizeBy = SidebarTaskOrganizeBy;
 type TaskSortBy = SidebarTaskSortBy;
-type PrimaryTaskMode = "workspace" | "grouped";
+type PrimaryTaskMode = "workspace" | "grouped" | "crew";
 type SidebarTaskViewMode = "grouped" | "workspace" | "timeline" | "archived";
 
 interface SidebarFileTreeTarget {
@@ -257,6 +258,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   goBackShortcutLabel: _goBackShortcutLabel,
   goForwardShortcutLabel: _goForwardShortcutLabel,
   onOpenCommandCenter,
+  crewActive = false,
+  crewSidebar,
+  onCrewViewChange,
   onOpenAutomations,
   onOpenPluginStore,
   automationsActive = false,
@@ -309,6 +313,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   goBackShortcutLabel?: string;
   goForwardShortcutLabel?: string;
   onOpenCommandCenter: () => void;
+  crewActive?: boolean;
+  crewSidebar?: ReactNode;
+  onCrewViewChange?: (active: boolean) => void;
   onOpenAutomations?: () => void;
   onOpenPluginStore?: () => void;
   automationsActive?: boolean;
@@ -464,6 +471,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
   const primaryTaskTabTriggerRefs = useRef<Record<PrimaryTaskMode, HTMLButtonElement | null>>({
     workspace: null,
     grouped: null,
+    crew: null,
   });
   const [primaryTaskIndicatorStyle, setPrimaryTaskIndicatorStyle] = useState<CSSProperties>({
     opacity: 0,
@@ -869,14 +877,24 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
     },
     previous: lastStableTaskGroupTogglePresentationRef.current,
   });
-  const activePrimaryTaskMode: PrimaryTaskMode =
-    taskOrganizeBy === "grouped" ? "grouped" : "workspace";
+  const activePrimaryTaskMode: PrimaryTaskMode = crewActive
+    ? "crew"
+    : taskOrganizeBy === "grouped"
+      ? "grouped"
+      : "workspace";
   const workspaceTaskViewValue = taskOrganizeBy === "chronological" ? "chronological" : "project";
-  const showTaskViewFilter = activePrimaryTaskMode === "workspace" || showArchivedTasks;
+  const showTaskViewFilter =
+    !crewActive && (activePrimaryTaskMode === "workspace" || showArchivedTasks);
   const showWorkspaceViewOptions = activePrimaryTaskMode === "workspace" && !showArchivedTasks;
-  const showTaskSortOptions = activePrimaryTaskMode === "workspace" || showArchivedTasks;
+  const showTaskSortOptions =
+    !crewActive && (activePrimaryTaskMode === "workspace" || showArchivedTasks);
   const handlePrimaryTaskModeChange = useCallback(
     (value: string) => {
+      onCrewViewChange?.(value === "crew");
+      if (value === "crew") {
+        setIsFileTreeOpen(false);
+        return;
+      }
       logger.debug("[WorkspaceSidebar] 切换任务一级视图", {
         from: taskOrganizeBy,
         to: value,
@@ -894,6 +912,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
       }
     },
     [
+      onCrewViewChange,
       groupedTaskGroupIds.length,
       groupedTaskGroupIdsHydrated,
       lastNonEmptyGroupedTaskGroupIds.length,
@@ -1066,9 +1085,23 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                     })}
                   </span>
                 </TabsTrigger>
+                <TabsTrigger
+                  ref={(node) => {
+                    primaryTaskTabTriggerRefs.current.crew = node;
+                  }}
+                  value="crew"
+                  className="relative z-10 h-6 flex-none gap-1 rounded-full border-transparent bg-transparent py-0 pl-1.5 pr-2 text-ui-sm font-medium text-foreground-subtle transition-colors data-active:border-transparent data-active:bg-transparent data-active:text-foreground data-active:shadow-none dark:data-active:border-transparent dark:data-active:bg-transparent"
+                >
+                  <Users aria-hidden="true" className="size-3 shrink-0" />
+                  <span>
+                    {intl.formatMessage({
+                      id: "workspaceSidebar.organizeCrew",
+                    })}
+                  </span>
+                </TabsTrigger>
               </TabsList>
             </Tabs>
-            {toggleAllTaskGroupsPresentation ? (
+            {!crewActive && toggleAllTaskGroupsPresentation ? (
               <ControlHintTooltip
                 title={intl.formatMessage({
                   id: toggleAllTaskGroupsPresentation.messageId,
@@ -1095,7 +1128,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {taskViewMode === "grouped" ? (
+            {!crewActive && taskViewMode === "grouped" ? (
               <ControlHintTooltip
                 title={workspaceReadOnlyReason ?? intl.formatMessage({ id: "taskGroup.newGroup" })}
               >
@@ -1202,34 +1235,41 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}
-            {showArchivedTasks ? (
+            {!crewActive && showArchivedTasks ? (
               <div
                 ref={setArchivedActionsContainer}
                 data-testid="archived-tasks-toolbar-actions"
                 className="flex shrink-0 items-center"
               />
             ) : null}
-            <ControlHintTooltip title={archivedTasksActionLabel}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0 text-foreground-subtle hover:text-foreground data-[state=on]:bg-hover data-[state=on]:text-foreground"
-                data-state={showArchivedTasks ? "on" : "off"}
-                aria-label={archivedTasksActionLabel}
-                onClick={() => {
-                  setShowArchivedTasks((current) => !current);
-                }}
-              >
-                {showArchivedTasks ? <X className="size-3.5" /> : <Archive className="size-3.5" />}
-              </Button>
-            </ControlHintTooltip>
+            {!crewActive && (
+              <ControlHintTooltip title={archivedTasksActionLabel}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 text-foreground-subtle hover:text-foreground data-[state=on]:bg-hover data-[state=on]:text-foreground"
+                  data-state={showArchivedTasks ? "on" : "off"}
+                  aria-label={archivedTasksActionLabel}
+                  onClick={() => {
+                    setShowArchivedTasks((current) => !current);
+                  }}
+                >
+                  {showArchivedTasks ? (
+                    <X className="size-3.5" />
+                  ) : (
+                    <Archive className="size-3.5" />
+                  )}
+                </Button>
+              </ControlHintTooltip>
+            )}
           </div>
         </div>
       </div>
     ),
     [
       activePrimaryTaskMode,
+      crewActive,
       archivedTasksActionLabel,
       createGroupedTaskGroupAction,
       handlePrimaryTaskModeChange,
@@ -1359,7 +1399,7 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
               style={workspaceScrollMaskStyle}
             >
               {workspaceTaskToolbar()}
-              {shouldShowPinnedTasks ? (
+              {!crewActive && shouldShowPinnedTasks ? (
                 // 归档切换主任务区时不应隐藏 pinned。
                 // pinned 是全局置顶区，归档态保持置顶区可见。
                 <WorkspacePinnedTasksSection
@@ -1376,7 +1416,9 @@ export const WorkspaceSidebar = memo(function WorkspaceSidebarComponent({
                 />
               ) : null}
               <div className="flex min-h-0 flex-col gap-3 px-2">
-                {taskViewMode === "archived" ? (
+                {crewActive ? (
+                  crewSidebar
+                ) : taskViewMode === "archived" ? (
                   <WorkspaceArchivedTasksFlatSection
                     actionsContainer={archivedActionsContainer}
                     workspaceTabs={workspaceTabs}

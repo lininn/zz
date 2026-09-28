@@ -1,3 +1,4 @@
+export * from "./agent-crew.js";
 export type {
   FileBinaryPreview,
   FileEntry,
@@ -306,3 +307,8 @@ export * from "./clientConfig.js";
 export * from "./pluginStoreOrdering.js";
 export * from "./session-debug.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";
+export * from "./crew-external-runtime.js";
+
+export * from "./agent-crew-details.js";
+
+export * from "./agent-crew-relay.js";

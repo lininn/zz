@@ -227,6 +227,8 @@ function defaultRuntimeTaskDescription(taskType: RuntimeTaskType): string {
       return "Agent background task";
     case "monitor_mcp":
       return "Monitor background task";
+    case "external_runtime":
+      return "External runtime task";
   }
 }
 

@@ -1,3 +1,11 @@
+import { AGENT_CREW_RELAY_MIGRATION_SQL } from "#src/session/tasksDatabase/agent-crew-v7.js";
+import { AGENT_CREW_CONVERSATIONS_MIGRATION_SQL } from "#src/session/tasksDatabase/agent-crew-v6.js";
+import {
+  AGENT_CATALOG_MIGRATION_SQL,
+  AGENT_CATALOG_EXTRACTION_VERSION,
+  extractCrewAgentCatalog,
+} from "#src/session/tasksDatabase/agent-crew-v5.js";
+import { AGENT_CREW_MIGRATION_SQL } from "#src/session/tasksDatabase/agent-crew-v4.js";
 import { databaseMigrationIdSchema, type DatabaseMigrationFacts } from "@zcode/shared";
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
@@ -64,6 +72,22 @@ const definitions = [
     id: "0003_official_glm_selection",
     checksumInput: [OFFICIAL_GLM_SELECTION_MIGRATION_SQL],
   },
+  {
+    id: "0004_agent_crew",
+    checksumInput: [AGENT_CREW_MIGRATION_SQL],
+  },
+  {
+    id: "0005_agent_crew_catalog",
+    checksumInput: [AGENT_CATALOG_MIGRATION_SQL, AGENT_CATALOG_EXTRACTION_VERSION],
+  },
+  {
+    id: "0006_agent_crew_conversations",
+    checksumInput: [AGENT_CREW_CONVERSATIONS_MIGRATION_SQL],
+  },
+  {
+    id: "0007_agent_crew_relay",
+    checksumInput: [AGENT_CREW_RELAY_MIGRATION_SQL],
+  },
 ] as const;
 
 export function runTasksDatabaseMigrations(
@@ -113,7 +137,13 @@ export function runTasksDatabaseMigrations(
       options.onProgress?.("migrating", { ...migrationFacts });
       if (migration.id === "0001_adopt_task_schema") adoptSchema(db);
       else if (migration.id === "0002_provider_selection") importLegacyAutomationSelections(db);
-      else db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
+      else if (migration.id === "0003_official_glm_selection")
+        db.exec(OFFICIAL_GLM_SELECTION_MIGRATION_SQL);
+      else if (migration.id === "0004_agent_crew") db.exec(AGENT_CREW_MIGRATION_SQL);
+      else if (migration.id === "0005_agent_crew_catalog") extractCrewAgentCatalog(db);
+      else if (migration.id === "0006_agent_crew_conversations")
+        db.exec(AGENT_CREW_CONVERSATIONS_MIGRATION_SQL);
+      else db.exec(AGENT_CREW_RELAY_MIGRATION_SQL);
       migrationFacts.executedCount++;
       db.prepare("INSERT INTO tasks_schema_migration VALUES(?,?,?)").run(
         migration.id,

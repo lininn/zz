@@ -73,6 +73,8 @@ import type {
 
 /** RPC 服务频道名。与 ServiceDescriptor.channelName 对应。 */
 export const ServiceChannels = {
+  Crew: "crew",
+  CrewAgentCatalog: "crew-agent-catalog",
   File: "file",
   MediaPreview: "media-preview",
   System: "system",

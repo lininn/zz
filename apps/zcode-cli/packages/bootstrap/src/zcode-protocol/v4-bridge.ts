@@ -724,10 +724,24 @@ export function createConversationV4Gateway(
       if (!input) return null;
       const kind = input.kind;
       const record = context.sessions.get(sessionId);
-      if (record?.persistence === "deferred") {
-        // session_input 有 session 外键；draft 要到 startPromptTurn 后台阶段才持久化，
-        // 如果先写 ledger 会直接 FK 失败，accepted 前仍没有权威记录。因此 admission
-        // 先走 runtime 的统一首发持久化边界，再落 ledger，随后 handler 只负责执行。
+      // 诊断：V4 sendText 处理器入口（admission 前）。crew 派工死循环定位需要
+      // 区分「未走到 admission」「admission 里 FK 失败」还是「hydrate 提前终止」。
+      context.logger?.info("V4 admitInputCommand entry", {
+        event: "v4.command.admit_input.entry",
+        module: "zcode_protocol.v4",
+        sessionId: String(sessionId),
+        kind,
+        hasRecord: Boolean(record),
+        recordPersistence: record?.persistence ?? null,
+        runtimeSessionPersisted: record?.app.runtime.isSessionPersisted() ?? null,
+      });
+      if (record && !record.app.runtime.isSessionPersisted()) {
+        // session_input 有 session 外键，ledger 写入前 session 行必须已落库。
+        // 以前只在 record.persistence === "deferred" 时落库，但 persistence 是协议层的
+        // 意图标记、不是「行已写入 store」的事实：crew 走 createSession(persistence:"immediate")
+        // 直接建为 immediate，却从未 INSERT session 行，于是跳过落库、随后
+        // saveSessionInput 触发 FOREIGN KEY constraint failed。这里改以 runtime 事实源
+        // isSessionPersisted() 为准——只要没落库就先落库（ensureSessionPersisted 幂等）。
         await record.app.runtime.ensureSessionPersistedForExternalActivity(input.text ?? "", {
           traceContext: record.traceContext,
         });

@@ -1,0 +1,52 @@
+(node:76182) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[tunnel] PC 绑定成功: crew-e2e-user / Memory test PC (d7807e43-08fc-4aa6-9180-4ca58c23b289)
+[2026-09-26 12:05:18.801] [pid:76182] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:05:18.801] [pid:76182] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:05:18.810] [pid:76182] [zcode-server:http] [rpc:call] crew.list OK (9.0ms)
+[2026-09-26 12:05:18.822] [pid:76182] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:05:18.822] [pid:76182] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:05:18.825] [pid:76182] [zcode-server:http] [rpc:call] crew-agent-catalog.create OK (2.5ms)
+[2026-09-26 12:05:18.828] [pid:76182] [zcode-server:http] [rpc:call] crew.create OK (2.5ms)
+[2026-09-26 12:05:18.829] [pid:76182] [zcode-server:http] [rpc:call] crew.bind OK (0.9ms)
+[2026-09-26 12:05:22.034] [pid:76182] [zcode-server:http] [rpc:call] crew.get OK (3204.1ms)
+[2026-09-26 12:05:22.048] [pid:76182] [zcode-server:http] [rpc:call] crew.send OK (3.7ms)
+[2026-09-26 12:05:22.058] [pid:76182] [zcode-server:http] [rpc:call] crew.get OK (1.7ms)
+[2026-09-26 12:05:22.062] [pid:76182] [zcode-server:http] [rpc:call] crew.get OK (1.8ms)
+[2026-09-26 12:05:22.067] [pid:76182] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:05:22.067] [pid:76182] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:05:22.071] [pid:76182] [zcode-server:http] [rpc:call] crew.send OK (1.7ms)
+[2026-09-26 12:05:22.074] [pid:76182] [zcode-server:http] [rpc:call] crew.get OK (1.3ms)
+[connector] 本地 WS 错误: Unexpected server response: 401
+[connector] 本地 WS 错误: Unexpected server response: 401
+[tunnel] 设备离线: Memory test PC (d7807e43-08fc-4aa6-9180-4ca58c23b289)
+✖ in-memory wire integration: cookie authentication survives both WS proxy hops (3508.616834ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4422.878584
+
+✖ failing tests:
+
+test at packages/server/test/crewRelay.memory.test.ts:1:566
+✖ in-memory wire integration: cookie authentication survives both WS proxy hops (3508.616834ms)
+  AssertionError [ERR_ASSERTION]: application cookie lost between relay upgrade and PC upgrade
+  + actual - expected
+  
+  + ''
+  - 'zcode_lite_token=memory-pc-token'
+  
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/server/test/crewRelay.memory.test.ts:163:12)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: 'zcode_lite_token=memory-pc-token',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

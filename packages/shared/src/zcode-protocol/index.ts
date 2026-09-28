@@ -1,3 +1,5 @@
+export * from "../agent-crew.js";
+export * from "../crew-external-runtime.js";
 import {
   databaseStartupErrorCodeSchema,
   databaseStartupErrorDetailsSchema,
@@ -3561,6 +3563,7 @@ export const zcodeOffPeakListResultSchema = z
 export type ZCodeOffPeakListProtocolResult = z.infer<typeof zcodeOffPeakListResultSchema>;
 
 export const zcodeProtocolMethods = {
+  crewRuntime: "crew/runtime",
   runtimeCapabilities: "runtime/capabilities",
   computerUseOperationEvent: "computer-use/operation-event",
   sessionCreate: "session/create",

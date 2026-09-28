@@ -1,3 +1,5 @@
+import type { ICrewAgentCatalogService } from "./crew/agentCatalogContract.js";
+import type { ICrewService } from "./crew/contract.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
 import type { IFileService } from "./file/file.js";
 import type { IMediaPreviewService } from "./media-preview/mediaPreview.js";
@@ -42,6 +44,8 @@ import type { IConversationShareService } from "./conversation-share/conversatio
 
 /** UI 层消费的统一服务接口 */
 export interface IServiceAccessor {
+  readonly crewService?: ICrewService;
+  readonly crewAgentCatalogService?: ICrewAgentCatalogService;
   readonly fileService: IFileService;
   readonly mediaPreviewService?: IMediaPreviewService;
   readonly gitService: IGitService;

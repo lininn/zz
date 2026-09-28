@@ -149,6 +149,8 @@ export const WEB_CONFIG_HTML = `<!doctype html>
   .model-option { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .model-option:last-child { border-bottom: none; }
   .model-option input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .fetch-all { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 400; cursor: pointer; user-select: none; }
+  .fetch-all input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
   .muted { color: var(--muted); font-size: 12px; }
 </style>
 </head>
@@ -187,7 +189,7 @@ export const WEB_CONFIG_HTML = `<!doctype html>
 <div class="toast" id="toast"></div>
 <div class="modal-mask" id="fetch-modal">
   <div class="modal">
-    <div class="modal-head">选择要导入的模型 <button class="btn secondary" id="fetch-close" style="padding:4px 10px;font-size:12px;">关闭</button></div>
+    <div class="modal-head"><span>选择要导入的模型</span><label class="fetch-all"><input type="checkbox" id="fetch-toggle-all" checked />全选</label><button class="btn secondary" id="fetch-close" style="padding:4px 10px;font-size:12px;">关闭</button></div>
     <div class="modal-body" id="fetch-list"></div>
     <div class="modal-foot">
       <div class="muted" style="margin-right:auto;align-self:center;" id="fetch-count"></div>

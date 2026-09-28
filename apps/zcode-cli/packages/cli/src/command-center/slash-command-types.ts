@@ -123,6 +123,12 @@ export type SlashCommand =
     }
   | {
       args: string;
+      name: "delegate";
+      rawName: string;
+      type: "known";
+    }
+  | {
+      args: string;
       rawName: string;
       type: "unknown";
     };

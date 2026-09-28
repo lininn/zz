@@ -39,6 +39,7 @@ export interface ParamsSchema<T> {
 }
 
 export interface ZCodeProtocolAgentDependencies {
+  createCrewRuntimeFacade?(workspace: ZCodeWorkspaceRef): Promise<import("../app/external-runtime.js").ExternalRuntimeFacade>;
   createZCodeApp(options?: Omit<ZCodeAppOptions, "providerRegistry">): ZCodeApp | Promise<ZCodeApp>;
   /**
    * 每个 session record 的内存 event store 工厂。

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { UpdateStatusButton } from "@/UpdateStatusButton.js";
+import { MobileWorkspaceSidebarToggle } from "@/app-shell/MobileWorkspaceSidebarToggle.js";
 import { DesktopTopOverlayActionButton } from "@/DesktopTopOverlayActionButton.js";
 import {
   createWindowsCaptionControlsStyle,
@@ -24,6 +25,7 @@ interface DesktopTopOverlayProps {
   macWindowControlsLeftPaddingPx?: number;
   windowsWindowControlsRightPaddingPx?: number;
   isSidebarVisible: boolean;
+  isMobileSidebar?: boolean;
   updateReadyVersion: string | null;
   updateState: UpdateStatePayload | null;
   toggleSidebarShortcutLabel: string;
@@ -54,6 +56,7 @@ export function DesktopTopOverlay({
   macWindowControlsLeftPaddingPx,
   windowsWindowControlsRightPaddingPx,
   isSidebarVisible,
+  isMobileSidebar = false,
   updateReadyVersion,
   updateState,
   toggleSidebarShortcutLabel,
@@ -106,6 +109,7 @@ export function DesktopTopOverlay({
         "@container/topoverlayer pointer-events-none absolute h-14 flex left-0 top-0 z-20 w-fit",
         // Windows/Linux 主面板新增 4px 留白及 1px 边框，左侧工具组需同步偏移才能对齐 Header 中心线。
         usesCustomCaptionArea && "top-1 mt-px",
+        isMobileSidebar && "z-40 h-12 px-1",
       )}
     >
       <div
@@ -131,6 +135,12 @@ export function DesktopTopOverlay({
             "pointer-events-auto flex items-center gap-1 shrink-0 [app-region:no-drag]",
           )}
         >
+          {/* Bugfix：桌面分支（停靠侧栏）的收起按钮原本是 Electron 专属，
+              Web 桌面宽度视口没有任何侧栏开关。现在停靠模式统一提供开关：
+              窄视口走抽屉开关，宽视口/桌面应用走普通图标开关，均常驻可点击。 */}
+          {isMobileSidebar ? (
+            <MobileWorkspaceSidebarToggle visible={isSidebarVisible} onToggle={onToggleSidebar} />
+          ) : null}
           {usesCustomCaptionArea && (
             <DesktopTopOverlayActionButton
               title={toggleSidebarTitle}
@@ -149,7 +159,7 @@ export function DesktopTopOverlay({
             </DesktopTopOverlayActionButton>
           )}
 
-          {isMacDesktop && (
+          {!usesCustomCaptionArea && !isMobileSidebar && (
             <DesktopTopOverlayActionButton
               title={toggleSidebarTitle}
               shortcut={toggleSidebarShortcutLabel}
@@ -161,7 +171,7 @@ export function DesktopTopOverlay({
           )}
 
           {/* 远程控制移动端左上角空间有限，任务前进/后退在这里会与主操作拥挤重叠。*/}
-          {hideTaskNavigationButtons ? null : (
+          {hideTaskNavigationButtons || isMobileSidebar ? null : (
             <>
               <DesktopTopOverlayActionButton
                 title={taskBackTitle}

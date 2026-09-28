@@ -18,6 +18,8 @@ export * from "./interfaces/session-store.port.js";
 export * from "./interfaces/input-history.port.js";
 export * from "./interfaces/tool-artifact-store.port.js";
 export * from "./interfaces/subagent.port.js";
+export * from "./interfaces/external-runtime.port.js";
+export * from "./interfaces/external-runtime-queue.port.js";
 export * from "./interfaces/coordinator-response.port.js";
 export * from "./interfaces/workflow.port.js";
 export * from "./interfaces/workflow-submit.port.js";

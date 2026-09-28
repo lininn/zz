@@ -1,0 +1,16 @@
+✔ catalog CRUD travels on its own RPC channel, independently of crew CRUD (1.340875ms)
+✔ nullable optional catalog settings survive JSON RPC to explicitly reset (1.029708ms)
+✔ group membership accepts only references and group-level permission overrides (0.908333ms)
+✔ catalog accepts the existing P1 runtime identities and structured model selection (0.795833ms)
+✔ resolved execution snapshot keeps the P1 runtime contract separate from membership (0.457209ms)
+✔ conversation commands preserve scope through the existing Crew RPC channel (1.023125ms)
+✔ conversation schemas reject empty scope and unknown attributes, retaining fixed-default compatibility (2.191458ms)
+✔ conversation projection has explicit ownership and a localizable default title (0.632709ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 776.187709

@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "lib": ["es2024", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["crew*.ts"],
+  "references": [
+    { "path": "../../rpc" },
+    { "path": "../../provider" },
+    { "path": "../../shared" },
+    { "path": "../../services" },
+    { "path": ".." }
+  ]
+}

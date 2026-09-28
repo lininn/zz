@@ -110,7 +110,8 @@ export const WEB_CONFIG_SCRIPT = `(function () {
       html += '</tbody></table></div>';
     }
     html += '</fieldset>'
-      + '<div style="display:flex;justify-content:flex-end;">'
+      + '<div style="display:flex;justify-content:flex-end;gap:8px;">'
+      + '<button class="btn secondary" id="copy-provider-btn">复制此 Provider</button>'
       + '<button class="btn danger" id="delete-provider-btn">删除此 Provider</button>'
       + '</div>';
     panel.innerHTML = html;
@@ -156,6 +157,15 @@ export const WEB_CONFIG_SCRIPT = `(function () {
       render();
     });
     $('fetch-models-btn').addEventListener('click', function () { fetchModels(p); });
+    $('copy-provider-btn').addEventListener('click', function () {
+      var source = activeProvider();
+      if (!source) return;
+      var copy = copyProvider(source);
+      state.providers.splice(state.activeIndex + 1, 0, copy);
+      state.activeIndex = state.activeIndex + 1;
+      render();
+      toast('已复制为「' + copy.providerName + '」，可修改名称与模型后保存');
+    });
     $('delete-provider-btn').addEventListener('click', function () {
       if (!confirm('确定删除 Provider「' + (p.providerName || p.providerId) + '」及其全部模型配置？')) return;
       state.providers.splice(state.activeIndex, 1);
@@ -215,6 +225,37 @@ export const WEB_CONFIG_SCRIPT = `(function () {
     return null;
   }
 
+  // 新增与复制共用同一套 providerId 分配规则，保证同一次编辑会话内不冲突。
+  function allocateProviderId() {
+    var n = 1;
+    while (findProvider('custom-' + n)) n++;
+    return 'custom-' + n;
+  }
+
+  function cloneModel(model) {
+    return {
+      modelId: model.modelId, enabled: model.enabled,
+      supportsImage: model.supportsImage, supportsVideo: model.supportsVideo,
+      supportsPdf: model.supportsPdf, contextWindow: model.contextWindow,
+      maxOutputTokens: model.maxOutputTokens
+    };
+  }
+
+  // 复制 Provider：基本配置与模型规则整体克隆（含 API Key），仅重置 ID 与名称。
+  function copyProvider(source) {
+    var models = [];
+    for (var i = 0; i < source.models.length; i++) models.push(cloneModel(source.models[i]));
+    return {
+      providerId: allocateProviderId(),
+      providerName: (source.providerName || source.providerId) + ' 副本',
+      enabled: source.enabled,
+      apiType: source.apiType,
+      baseUrl: source.baseUrl,
+      apiKey: source.apiKey,
+      models: models
+    };
+  }
+
   function fetchModels(p) {
     if (!p.baseUrl.trim()) { toast('请先填写 Base URL', true); return; }
     var btn = $('fetch-models-btn');
@@ -250,13 +291,38 @@ export const WEB_CONFIG_SCRIPT = `(function () {
         + esc(id) + (existing[id] ? ' <span class="muted">（已存在）</span>' : '') + '</label>';
     }
     $('fetch-list').innerHTML = html;
-    $('fetch-count').textContent = '共 ' + fetchCandidates.length + ' 个模型';
+    updateFetchSelection();
     $('fetch-modal').className = 'modal-mask show';
+  }
+
+  // 全选主开关状态：只统计可导入（非禁用）项；半选状态用 indeterminate 表达。
+  function updateFetchSelection() {
+    var master = $('fetch-toggle-all');
+    var boxes = $('fetch-list').querySelectorAll('input[type="checkbox"]');
+    var selectable = 0;
+    var selected = 0;
+    for (var i = 0; i < boxes.length; i++) {
+      if (boxes[i].disabled) continue;
+      selectable++;
+      if (boxes[i].checked) selected++;
+    }
+    master.checked = selectable > 0 && selected === selectable;
+    master.indeterminate = selected > 0 && selected < selectable;
+    $('fetch-count').textContent = '共 ' + fetchCandidates.length + ' 个模型，可导入 ' + selectable + ' 个，已选 ' + selected + ' 个';
   }
 
   $('fetch-close').addEventListener('click', function () {
     $('fetch-modal').className = 'modal-mask';
   });
+  // 全选主开关：只切换可导入项；列表内单个勾选通过事件冒泡统一回算主开关状态。
+  $('fetch-toggle-all').addEventListener('change', function () {
+    var boxes = $('fetch-list').querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < boxes.length; i++) {
+      if (!boxes[i].disabled) boxes[i].checked = this.checked;
+    }
+    updateFetchSelection();
+  });
+  $('fetch-list').addEventListener('change', function () { updateFetchSelection(); });
   $('fetch-import').addEventListener('click', function () {
     var p = activeProvider();
     if (!p) return;
@@ -274,9 +340,8 @@ export const WEB_CONFIG_SCRIPT = `(function () {
   });
 
   $('add-provider-btn').addEventListener('click', function () {
-    var n = 1;
-    while (findProvider('custom-' + n)) n++;
-    var id = 'custom-' + n;
+    var id = allocateProviderId();
+    var n = Number(id.slice('custom-'.length));
     state.providers.push({
       providerId: id, providerName: '新 Provider ' + n, enabled: true,
       apiType: 'openai-chat-completions', baseUrl: '', apiKey: '', models: []

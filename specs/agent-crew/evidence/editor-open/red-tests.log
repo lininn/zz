@@ -1,0 +1,153 @@
+✖ new editor renders without group/detail while list loading=false (zh-CN) (73.054875ms)
+✖ new editor renders without group/detail while list loading=false (en-US) (13.679583ms)
+✖ new editor renders without group/detail while list loading=true (zh-CN) (7.934625ms)
+✖ new editor renders without group/detail while list loading=true (en-US) (6.908792ms)
+✖ sidebar create invokes onCreate instead of onManage, including while groups load (111.114667ms)
+✖ create then bind failure retains editor and retry updates the accepted group instead of creating twice (6.262416ms)
+✖ canceling an unsaved editor does not create a group (5.479375ms)
+✖ stale create completion neither binds nor navigates (5.76125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 0
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1616.566667
+
+✖ failing tests:
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:1710
+✖ new editor renders without group/detail while list loading=false (zh-CN) (73.054875ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /data-testid="crew-editor"/. Input:
+  
+  '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users size-8 text-muted-foreground" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg><h1 class="text-ui-lg font-semibold">Agent 群组</h1><p class="max-w-md text-ui-base text-muted-foreground">从左侧选择项目下的群组对话，查看成员交接与执行进度。</p><button variant="outline">管理 Agent 与群组</button></div></main>'
+  
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:62:14)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users size-8 text-muted-foreground" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg><h1 class="text-ui-lg font-semibold">Agent 群组</h1><p class="max-w-md text-ui-base text-muted-foreground">从左侧选择项目下的群组对话，查看成员交接与执行进度。</p><button variant="outline">管理 Agent 与群组</button></div></main>',
+    expected: /data-testid="crew-editor"/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:1710
+✖ new editor renders without group/detail while list loading=false (en-US) (13.679583ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /data-testid="crew-editor"/. Input:
+  
+  '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users size-8 text-muted-foreground" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg><h1 class="text-ui-lg font-semibold">Agent Crew</h1><p class="max-w-md text-ui-base text-muted-foreground">Select a crew conversation under a project to follow handoffs and execution progress.</p><button variant="outline">Manage agents and crews</button></div></main>'
+  
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:62:14)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><div class="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 p-6 text-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users size-8 text-muted-foreground" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg><h1 class="text-ui-lg font-semibold">Agent Crew</h1><p class="max-w-md text-ui-base text-muted-foreground">Select a crew conversation under a project to follow handoffs and execution progress.</p><button variant="outline">Manage agents and crews</button></div></main>',
+    expected: /data-testid="crew-editor"/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:1710
+✖ new editor renders without group/detail while list loading=true (zh-CN) (7.934625ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /data-testid="crew-editor"/. Input:
+  
+  '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><p role="status" class="p-6 text-ui-caption">正在加载…</p></main>'
+  
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:62:14)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><p role="status" class="p-6 text-ui-caption">正在加载…</p></main>',
+    expected: /data-testid="crew-editor"/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:1710
+✖ new editor renders without group/detail while list loading=true (en-US) (6.908792ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /data-testid="crew-editor"/. Input:
+  
+  '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><p role="status" class="p-6 text-ui-caption">Loading…</p></main>'
+  
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:62:14)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '<main class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background" data-testid="crew-home"><p role="status" class="p-6 text-ui-caption">Loading…</p></main>',
+    expected: /data-testid="crew-editor"/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:2756
+✖ sidebar create invokes onCreate instead of onManage, including while groups load (111.114667ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   'manage'
+  -   'create'
+    ]
+  
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:84:10)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'manage' ],
+    expected: [ 'create' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:4067
+✖ create then bind failure retains editor and retry updates the accepted group instead of creating twice (6.262416ms)
+  AssertionError [ERR_ASSERTION]: CrewHome must mount its editor without a persisted group/detail
+      at editorElement (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:38:3)
+      at view (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:103:22)
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:104:9)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:5012
+✖ canceling an unsaved editor does not create a group (5.479375ms)
+  AssertionError [ERR_ASSERTION]: CrewHome must mount its editor without a persisted group/detail
+      at editorElement (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:38:3)
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:113:3)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at packages/ui/src/crew/crewEditorOpening.test.tsx:1:5377
+✖ stale create completion neither binds nor navigates (5.76125ms)
+  AssertionError [ERR_ASSERTION]: CrewHome must mount its editor without a persisted group/detail
+      at editorElement (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:38:3)
+      at TestContext.<anonymous> (/Users/lininn/test/ZCode/packages/ui/src/crew/crewEditorOpening.test.tsx:122:9)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

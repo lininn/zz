@@ -1,10 +1,12 @@
 import {
   Monitor,
+  MonitorSmartphone,
   Moon,
   Settings,
   Settings2,
   Package,
   Bot,
+  Users,
   Palette,
   Sun,
   BarChart3,
@@ -80,6 +82,12 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     groupId: "agentCapabilities",
   },
   {
+    id: "crew",
+    icon: Users,
+    titleId: "crew.title",
+    groupId: "agentCapabilities",
+  },
+  {
     id: "subagents",
     icon: Bot,
     titleId: "settings.subagents.title",
@@ -134,6 +142,13 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     id: "computerUse",
     icon: Monitor,
     titleId: "settings.computerUse.title",
+    groupId: "basics",
+  },
+  // 远程控制（自建中转）紧跟「电脑控制」：本机登录开启后，手机浏览器经中转控制这台电脑。
+  {
+    id: "remoteControl",
+    icon: MonitorSmartphone,
+    titleId: "settings.remoteControl.title",
     groupId: "basics",
   },
   // 键盘快捷键紧跟「电脑控制」：同属本机操控/效率配置，收纳在基础设置尾部。

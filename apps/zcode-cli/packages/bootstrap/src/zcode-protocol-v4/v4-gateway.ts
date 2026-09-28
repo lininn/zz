@@ -2396,18 +2396,39 @@ export class ConversationV4Gateway {
     }
 
     const outcome = await this.inbox.handle(rawParams);
-    if (outcome.kind === "ack")
+    if (outcome.kind === "ack") {
+      // inbox 直接拒绝（proto.sessionNotFound / staleTarget 等）不会经过 executeCommand，
+      // 这条早返回过去完全无痕。failed 时补一条结构化日志，与 execute 分支共用 onError。
+      if (outcome.ack.status === "failed") {
+        const parsedForLog = parseCommandEnvelope(rawParams);
+        this.host.onError?.(
+          "v4.command.admit",
+          new Error(outcome.ack.message ?? outcome.ack.reasonCode ?? "command rejected"),
+          {
+            commandId: parsedForLog.ok ? parsedForLog.envelope.commandId : null,
+            phase: "admit",
+            reasonCode: outcome.ack.reasonCode ?? null,
+            sessionId: parsedForLog.ok ? parsedForLog.envelope.sessionId : null,
+            status: outcome.ack.status,
+          },
+        );
+      }
       return {
         ...outcome.ack,
         ...(ttftCapacityRejected ? { ttftExcluded: "capacity" as const } : {}),
       };
+    }
     this.localTtft.admitted(outcome.envelope.commandId);
     let durableInputIntent: ConversationInputIntent | null = null;
     let settledAck: CommandAck | null = null;
     type CommandFinal = Parameters<typeof outcome.settle>[0];
-    const reportError = (scope: string, error: unknown): void => {
+    const reportError = (
+      scope: string,
+      error: unknown,
+      context?: V4GatewayErrorContext,
+    ): void => {
       try {
-        this.host.onError?.(scope, error);
+        this.host.onError?.(scope, error, context);
       } catch {
         // 错误观察器不能反向破坏 command final 与 session FIFO 的收口。
       }
@@ -2508,7 +2529,15 @@ export class ConversationV4Gateway {
         releaseDurableInput(final);
         return settleOnce(final);
       }
-      reportError("v4.command.execute", error);
+      // 结构化插桩：ACK failed 点必须留下原始错误/会话/命令/阶段，否则 crew 派工
+      // 的确定性失败只能看到归一后的 reasonCode，无法区分 hydrate 降级、FK 或网关。
+      reportError("v4.command.execute", error, {
+        commandId: outcome.envelope.commandId,
+        commandType: outcome.envelope.type,
+        phase: "execute",
+        queueItemId: outcome.queueItemId,
+        sessionId: outcome.envelope.sessionId,
+      });
       // 携带 reasonCode 的领域错误（V4PromptRejectedError / heldQueueDispositionRequired 等）
       // 原样上行，客户端才能按 guard 错误码分流；否则归一 executionFailed。
       const domainReasonCode =

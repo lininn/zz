@@ -1,0 +1,13 @@
+﹣ server Agent service -> existing CLI bundle accepts agent_crew_ session/create over stdio (5.11ms) # Agent IPC unavailable: listen EPERM: operation not permitted /private/var/folders/vd/zftkbg191c92_l6lhk4g5bhc0000gn/T/crew-stdio-QTqGTf/probe.sock
+(node:57212) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ real relay + connector subprocesses -> ZCode crew RPC (no target auth) (7.176542ms) # TCP E2E unavailable: listen EPERM: operation not permitted 127.0.0.1; no socket/process evidence claimed
+﹣ real relay + connector subprocesses -> ZCode crew RPC (cookie auth) (2.342416ms) # TCP E2E unavailable: listen EPERM: operation not permitted 127.0.0.1; no socket/process evidence claimed
+ℹ tests 3
+ℹ suites 0
+ℹ pass 0
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 3
+ℹ todo 0
+ℹ duration_ms 675.6225

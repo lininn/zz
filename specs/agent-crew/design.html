@@ -1,0 +1,50 @@
+<title>ZCode Agent 群组</title>
+<style>
+:root{--bg:#f7f8f6;--card:#fff;--ink:#172626;--muted:#5c7070;--line:#dce4e0;--accent:#087e78;--soft:#e3f3ef;--warn:#fff4d7;--code:#edf2f0} @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a1b;--card:#192728;--ink:#e9f2ef;--muted:#a6b9b6;--line:#324444;--accent:#6ad2c2;--soft:#173e39;--warn:#493b1b;--code:#243332}} :root[data-theme="dark"]{--bg:#101a1b;--card:#192728;--ink:#e9f2ef;--muted:#a6b9b6;--line:#324444;--accent:#6ad2c2;--soft:#173e39;--warn:#493b1b;--code:#243332}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 system-ui,-apple-system,"PingFang SC",sans-serif}main{max-width:960px;margin:auto;padding:clamp(22px,5vw,58px)}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.03em;line-height:1.15;margin:12px 0}h2{font-size:23px;margin:40px 0 12px}h3{font-size:17px;margin:0 0 8px}.eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}.lead{font-size:18px;color:var(--muted);max-width:760px}.meta{color:var(--muted);font-size:13px}.pill{background:var(--soft);border-radius:99px;color:var(--accent);padding:4px 10px;display:inline-block;font-size:12px;margin-right:6px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.card{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:18px}.card p{margin:0}.callout{background:var(--soft);border-left:3px solid var(--accent);padding:15px 18px;border-radius:8px}.warning{background:var(--warn);border-left:3px solid #bd8a1a;padding:15px 18px;border-radius:8px}.flow{overflow-x:auto;background:var(--code);border-radius:14px;padding:16px 20px;white-space:pre;font:13px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace}code{background:var(--code);padding:2px 5px;border-radius:4px}ul,ol{padding-left:22px}li{margin:6px 0}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}table{border-collapse:collapse;min-width:650px;width:100%}th,td{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}th{background:var(--soft);white-space:nowrap}tr:last-child td{border:0}a{color:var(--accent)}.small{font-size:13px;color:var(--muted)}
+</style>
+<main>
+<div class="eyebrow">产品与架构设计 · 2026-09-24</div>
+<h1>Agent 群组：把任务交给一支可复制的团队</h1>
+<p class="lead">在 ZCode 中创建有角色、有运行时绑定的 Agent；把他们加入群组，通过 @ 派工、交接与验收。群组可以复制为新项目的空白团队，重新绑定工作目录后开始新的对话。</p>
+<p class="meta">本方案基于当前仓库源码阅读及已确认的三项产品选择；是设计提案，不表示功能已经实现。</p>
+<div><span class="pill">共享目录 / 独立 worktree 可选</span><span class="pill">定向投递 + 群板回读</span><span class="pill">auto / manual / semi 可选</span></div>
+<h2>1 · 使用体验</h2>
+<div class="grid"><div class="card"><h3>Agent 管理</h3><p>新建“产品经理”“开发”“评审”等 Agent，配置名称、身份提示词、能力边界、默认模型与运行时。运行时选择 <strong>ZCode（默认）</strong>、Claude CLI、Codex CLI 或 OpenCode CLI；未绑定外部运行时即由 ZCode 自身执行。配置检查显示本机 CLI、版本、认证及权限能力是否可用。</p></div><div class="card"><h3>群组创建</h3><p>选择工作目录、成员及每位成员的权限（只读 / 可写）；设置工作模式、接力模式、最大轮次和预算。群组是独立聊天入口，不等同现有“任务分组”。可一键 @ 指定 Agent，也可在同一条消息 @ 多人。</p></div><div class="card"><h3>群组复制</h3><p>复制名称建议、成员角色/提示词快照、运行时类型、权限与策略，<strong>不复制</strong>聊天、任务、审批、原生 session、worktree、凭据和工作目录绑定。新群处于“待绑定”，选择新目录并通过检查后才能发消息。</p></div></div>
+<h2>2 · 一条消息怎样流转</h2>
+<div class="flow">用户 @PM「做登录功能」
+  → 群组服务写入群板消息 + mention 的 agentId
+  → 派工队列只唤醒 PM；构造「角色提示词 + 最近群板摘要/消息 + 本次任务」
+  → PM 回复群板；可发结构化交接 @Developer「实现 UI」
+  → 按群组接力策略审批 / 自动投递；Developer 执行并回写结果与证据
+  → Developer 可 @Reviewer 交接；Reviewer 只读检查并反馈
+  → 用户随时取消、暂停、拒绝交接或查看各成员执行状态</div>
+<p><strong>定向投递：</strong>普通群消息持久化但不广播模型；仅有效 @ 或用户明确指定的默认接收 Agent 产生执行。成员接收时读取受限上下文（最近 N 条 + 必要摘要 + 引用的任务结果），超长消息按预算裁剪，避免整个群聊 N 倍消耗。群板消息与 Agent 私有运行上下文分开存储。</p>
+<p><strong>交接不靠扫描自由文本：</strong>UI 解析用户输入中的结构化 @ 芯片为稳定 <code>agentId</code>；Agent 通过受控 <code>proposeHandoff(targetAgentId, objective, references)</code> 输出交接意图。正文中的“@某人”只作展示，不自动触发执行，避免代码块、引用及工具输出误触发。</p>
+<h2>3 · 并发与工作目录</h2>
+<div class="table-wrap"><table><thead><tr><th>模式</th><th>读取 / 写入</th><th>交付与风险</th></tr></thead><tbody><tr><td>共享目录（默认）</td><td>只读任务可并行；可写任务必须获得<strong>同一 workspaceIdentity 的全局单写者租约</strong>。租约覆盖本群、其他群及普通会话；活跃读任务若不能确保快照一致，应排队或改用只读快照。</td><td>改动立即可见；禁止并行写。外部 CLI 的写权限不能绕过同一租约。</td></tr><tr><td>成员独立 worktree</td><td>写者在独立 git worktree 并行；只读者明确选择基线或某成员工作树。</td><td>变更不会自动出现在主目录。Diff → 独立验证 → 用户确认合并；冲突停在人工处理。未合并前不能把“已实现”当成主目录事实。</td></tr></tbody></table></div>
+<p class="small">非 Git 目录先支持共享模式；worktree 模式须通过 Git/目录检查。切换并发模式仅允许无运行中任务时进行。复制群组绝不复制原 worktree。</p>
+<h2>4 · 接力策略与控制</h2>
+<div class="grid"><div class="card"><h3>manual</h3><p>交接卡片等待用户点击“批准投递”；拒绝后写入决策。适合高成本或敏感项目。</p></div><div class="card"><h3>semi</h3><p>前 K 次有效交接自动投递；之后进入人工审批。K 在群设置中明确展示。</p></div><div class="card"><h3>auto</h3><p>符合政策的交接自动入队；超过 hop、预算、时长、失败次数或循环阈值则停止并通知用户。</p></div></div>
+<p>所有模式都受硬上限约束：每条交接链的 <code>rootRequestId</code>、最大 hop、最大调用次数、并发数、单任务超时与可用预算；同一交接的重复提交由幂等键去重。A→B→A 不应仅凭名称一律封禁（审查返工是合法的），而应按往返次数与相同任务指纹触发审批/熔断。权限升级、运行时不可用、写入或合并等高风险动作不得通过提示词自行批准。</p>
+<h2>5 · 所有者与数据边界</h2>
+<div class="flow">Renderer / Mobile Web  ──命令──→  GroupService (唯一事实所有者)
+       ↑ 投影 / 增量                 │ 事务：消息 / 交接 / 派工
+       │                             ├── SQLite: groups, members, messages, handoffs, runs
+       │                             ├── Workspace lease / worktree manager
+       │                             └── Runtime adapter registry
+       │                                    ├── ZCode runtime
+       │                                    ├── Claude CLI（现有雏形）
+       │                                    ├── Codex CLI（新适配器）
+       │                                    └── OpenCode CLI（新适配器）
+       └────────── 归一化事件 / 审批 / 验证证据 ────────────────────</div>
+<ul><li><strong>Agent 定义：</strong>独立 Agent catalog（稳定 ID、版本、角色提示词、runtime binding、默认权限）；可参考现有 <code>packages/services/src/subagents/</code> 的 Markdown 配置和设置页，但群组 Agent 应有自己的可追溯配置快照，不把已有子 Agent 会话直接当群组消息。成员绑定 <code>agentId + configVersion</code>；更新由用户显式同步，保证历史执行可复现。</li><li><strong>群组：</strong><code>groupId</code>、<code>workspaceIdentity</code>、<code>workspacePath</code>、并发策略、接力策略和预算；成员身份单独标识 <code>memberId</code>。重绑目录需阻止运行中任务，验证目录与身份，并开启新会话纪元，不静默迁移旧原生会话。</li><li><strong>消息与执行：</strong>群消息与任务执行分表，持久化发送者、可见文本、结构化 mentions、交接/任务引用及递增 sequence；执行记录包含 Agent 配置版本、runtime、状态、原生 session ID、证据和耗费。按 <code>groupId + messageId + memberId</code> 幂等入队。重启后先恢复队列与租约；不能证明安全归属的写任务停为 <code>recovery_required</code>，绝不重放。</li><li><strong>复制：</strong>一个事务创建新 <code>groupId</code> 与独立成员快照，<code>workspaceBinding = null</code>，无消息/任务/审批。运行时名称可保留，但认证引用必须重新校验；复制不是文件夹或 Git 仓库复制。</li></ul>
+<p class="warning"><strong>命名隔离：</strong>仓库已有 <code>task_groups</code> 是把任务归类的分组，不应复用为会话群组；已有 Bots 的第三方群聊入口也不是本功能（源码当前提示“尚不支持群聊”）。新领域建议命名 <code>agent_crew</code> / <code>crew_*</code>，避免语义碰撞。</p>
+<h2>6 · 基于当前仓库的落点</h2>
+<div class="table-wrap"><table><thead><tr><th>现有能力</th><th>方案落点</th><th>仍需建设</th></tr></thead><tbody><tr><td><code>SubagentsService</code>、设置页 Agent 管理、<code>@subagents</code> mention</td><td>借用配置字段、表单组件和 mention 交互</td><td>群组 Agent 版本化定义、运行时绑定与稳定群成员身份</td></tr><tr><td><code>zcodeTaskService</code>、V4 session/timeline</td><td>复用单次执行、事件和 UI 表现构件</td><td>独立群板事实源、消息/交接队列及群组投影</td></tr><tr><td>CLI external-runtime contract、Claude CLI adapter 与 SQLite 队列雏形</td><td>抽取/扩展 vendor-neutral 执行适配层</td><td>Codex/OpenCode 适配、群组权限/租约、聊天恢复契约；现有接口仅 probe/start/interrupt/cancel，不能假称多轮对话已打通</td></tr><tr><td><code>tasksDatabase</code> 的 <code>task_groups</code></td><td>仅用于现有任务视图</td><td>新 migration 与 CrewService，不在旧表上叠加语义</td></tr></tbody></table></div>
+<p class="small">依赖方向：<code>shared</code> 定义协议与校验 → <code>services</code> 持有业务事实与事务 → CLI adapter 执行 → <code>ui</code> 通过 hooks 发送命令/订阅投影。远程 workspace 继续使用现有 identity 规则，不能只拿 path 作键。</p>
+<h2>7 · 实施分期</h2>
+<ol><li><strong>P0 · 垂直切片：</strong>协议/迁移/Agent 目录 → 群组 CRUD/复制与待绑定 → ZCode 默认执行 → 用户 @ 单 Agent → 消息落盘/重启恢复 → 共享目录租约。先跑通单人/单群完整链路。</li><li><strong>P1 · 外部运行时：</strong>Claude 已有雏形接入群组并补会话/权限语义；Codex 和 OpenCode 分别做 capability probe、结构化事件、取消及恢复测试。未通过能力检查的绑定显示不可用而不是静默降级到 ZCode。</li><li><strong>P2 · 协作：</strong>结构化 Agent→Agent 交接、manual/semi/auto、预算熔断与审批卡片；独立 worktree 模式、Diff/验证/人工合并；远程桌面与手机同步验证。</li><li><strong>P3 · 模板体验：</strong>群组复制、换目录预检、角色预设、群板摘要和成本统计优化（可在 P0 实现最小复制语义，P3 完善模板 UX）。</li></ol>
+<h2>8 · 验收样例</h2>
+<ul><li>创建群组，绑定工作目录并 @ 开发：只启动被 @ 的 Agent，消息和执行状态重启后仍在。</li><li>同一 workspace 下两群尝试写入：共享模式只有一个写者；读者看到的基线明确；取消和崩溃后租约可安全回收。</li><li>auto 模式 PM→开发→评审完成交接；重复事件只投递一次，预算或 hop 用尽进入待人工处理。</li><li>worktree 模式两个写者并行，主目录不被偷偷改动；合并失败保留双方 diff，不标记成功。</li><li>复制群组后新群成员与配置齐全，但目录未绑定、群消息数为 0、执行数为 0、无原生会话；重新绑定后任务不会读到旧目录。</li><li>CLI 缺失、认证失败、权限不足、移动端重连、恶意消息伪造 @、进程重启都产生可解释状态，不自动越权或丢单。</li></ul>
+<div class="callout"><strong>推荐下一步：</strong>先将本设计拆成 P0 的正式行为 spec（产品规则、状态机、接口、验收测试），再做最小实现。现有 external-runtime 相关文件在工作区有未提交改动，实施时需避开覆盖这些改动，并以最终代码基线复核适配器能力。</div>
+</main>

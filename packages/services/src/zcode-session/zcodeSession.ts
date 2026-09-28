@@ -32,7 +32,9 @@ export interface ZCodeTaskTarget extends ZCodeSessionWorkspaceTarget {
 }
 
 export interface ZCodeSessionCreateParams extends ZCodeSessionWorkspaceTarget {
-  /** 仅导入事务使用的预分配 ID；普通新会话继续由 Agent 分配。 */
+  /** Host 群组只读成员的最小工具面；空/缺省不扩大现有权限。 */
+  toolAllowlist?: string[];
+  /** 导入/群组执行使用预分配 ID；普通新会话继续由 Agent 分配。 */
   sessionId?: string;
   sessionTraceId?: TraceId;
   parentSessionId?: string;

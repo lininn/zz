@@ -59,10 +59,12 @@ import { getCliStorageRoot, getModelIoDir, projectIdFromDirectory } from "./path
 import {
   asInputHistoryStore,
   asLocalSettingStore,
+  getSessionDbPath,
   openStartupSessionStore,
   readProjectPermissionMode,
   readSessionModelSelection,
 } from "./session-store.js";
+import { createExternalRuntimeFacade, resolveOuterSandboxReady } from "./external-runtime.js";
 import { createWorkflowFacade } from "./workflow-facade.js";
 import { createInputFacade } from "./input-facade.js";
 import { createPluginFacadeForApp } from "./plugin-facade.js";
@@ -919,6 +921,32 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       }
       return { ref, mediaType, ...(artifactUri ? { artifactUri } : {}) };
     };
+    let externalRuntimeFacade:
+      | Awaited<ReturnType<typeof createExternalRuntimeFacade>>
+      | undefined;
+    if (options.externalRuntime?.enabled === true) {
+      try {
+        externalRuntimeFacade = await createExternalRuntimeFacade({
+          dbPath: getSessionDbPath(configResult),
+          workingDirectory,
+          workspaceIdentity:
+            options.runtimeConfig?.memory?.workspaceIdentity?.trim() || workingDirectory,
+          cliStorageRoot,
+          env: options.env,
+          outerSandboxReady: resolveOuterSandboxReady(
+            options.externalRuntime.outerSandboxReady,
+            options.env,
+          ),
+          logger,
+        });
+      } catch (error) {
+        logger?.warn?.("External runtime dispatch unavailable, continuing without it", {
+          error: error instanceof Error ? error.message : String(error),
+          event: "external_runtime.facade.unavailable",
+          module: "bootstrap.app",
+        });
+      }
+    }
     return {
       sessionId,
       traceId: traceContext.traceId,
@@ -1113,12 +1141,29 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
           try {
             providerModelRuntime?.dispose();
           } finally {
-            await modelTelemetry.shutdown();
+            try {
+              await externalRuntimeFacade?.shutdown();
+            } catch {
+              logger?.debug?.("External runtime store close failed", {
+                event: "external_runtime.store.close.failed",
+                module: "bootstrap.app",
+              });
+            } finally {
+              await modelTelemetry.shutdown();
+            }
           }
         }
       },
       ...workflowFacade,
       ...scriptWorkflowFacade,
+      ...(externalRuntimeFacade === undefined
+        ? {}
+        : {
+            crewRuntime: (command) => externalRuntimeFacade.crewRuntime(command),
+            dispatchExternalRuntime: (input) => externalRuntimeFacade.dispatchExternalRuntime(input),
+            listExternalRuntimeTasks: () => externalRuntimeFacade.listExternalRuntimeTasks(),
+            cancelExternalRuntimeTask: (input) => externalRuntimeFacade.cancelExternalRuntimeTask(input),
+          }),
       // dwf 事件日志的读面。**可选能力**：journal 不可用时 run service 整个不构造，
       // 这个方法随之缺席，v4 网关据此回结构化的能力不支持错误——「没有事件」与
       // 「这个会话没有这个能力」必须能被 renderer 区分。

@@ -454,6 +454,8 @@ function toolNameFromRuntimeTaskType(type: RuntimeTaskType): string {
       return "CreateWorkflow";
     case "monitor_mcp":
       return "Monitor";
+    case "external_runtime":
+      return "ExternalRuntime";
   }
 }
 

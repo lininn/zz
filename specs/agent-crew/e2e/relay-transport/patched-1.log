@@ -1,0 +1,36 @@
+(node:96614) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+[tunnel] PC 绑定成功: crew-e2e-user / Memory test PC (d7807e43-08fc-4aa6-9180-4ca58c23b289)
+[2026-09-26 12:02:42.119] [pid:96614] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:02:42.119] [pid:96614] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:02:42.134] [pid:96614] [zcode-server:http] [rpc:call] crew.list OK (9.2ms)
+[2026-09-26 12:02:42.147] [pid:96614] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:02:42.147] [pid:96614] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:02:42.149] [pid:96614] [zcode-server:http] [rpc:call] crew-agent-catalog.create OK (2.3ms)
+[2026-09-26 12:02:42.152] [pid:96614] [zcode-server:http] [rpc:call] crew.create OK (2.4ms)
+[2026-09-26 12:02:42.153] [pid:96614] [zcode-server:http] [rpc:call] crew.bind OK (0.8ms)
+[2026-09-26 12:02:45.366] [pid:96614] [zcode-server:http] [rpc:call] crew.get OK (3212.6ms)
+[2026-09-26 12:02:45.498] [pid:96614] [zcode-server:http] [rpc:call] crew.send OK (30.1ms)
+[2026-09-26 12:02:45.512] [pid:96614] [zcode-server:http] [rpc:call] crew.get OK (2.0ms)
+[2026-09-26 12:02:45.516] [pid:96614] [zcode-server:http] [rpc:call] crew.get OK (1.5ms)
+[2026-09-26 12:02:45.563] [pid:96614] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:02:45.563] [pid:96614] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:02:45.567] [pid:96614] [zcode-server:http] [rpc:call] crew.send OK (1.9ms)
+[2026-09-26 12:02:45.569] [pid:96614] [zcode-server:http] [rpc:call] crew.get OK (1.4ms)
+[connector] 本地 WS 错误: Unexpected server response: 401
+[2026-09-26 12:02:45.585] [pid:96614] [zcode-server:http] [rpc:register] channel "crew"
+[2026-09-26 12:02:45.586] [pid:96614] [zcode-server:http] [rpc:register] channel "crew-agent-catalog"
+[2026-09-26 12:02:45.607] [pid:96614] [zcode-server:http] [rpc:call] crew.list OK (0.4ms)
+[2026-09-26 12:02:45.609] [pid:96614] [zcode-server:http] [rpc:call] crew.send OK (1.6ms)
+[2026-09-26 12:02:45.615] [pid:96614] [zcode-server:http] [rpc:call] crew.get OK (2.1ms)
+[2026-09-26 12:02:45.618] [pid:96614] [zcode-server:http] [rpc:call] crew.get OK (2.2ms)
+[tunnel] 设备离线: Memory test PC (d7807e43-08fc-4aa6-9180-4ca58c23b289)
+✔ in-memory wire integration: cookie authentication survives both WS proxy hops (3647.9315ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4637.2755

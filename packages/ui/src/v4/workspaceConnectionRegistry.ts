@@ -262,3 +262,14 @@ export function acquireWorkspaceConnection(
     },
   };
 }
+
+/** 只查当前 service/endpoint 的现成投影，绝不新建连接、恢复 session 或激活旧代理。 */
+export function peekWorkspaceConversationStore(
+  scope: WorkspaceConnectionScope,
+  agentService: WorkspaceConnectionAgentService,
+  sessionId: string,
+) {
+  const entry = registry.get(buildWorkspaceConnectionKey(scope));
+  if (!entry || entry.stale || entry.agentService !== agentService) return null;
+  return entry.layer.peek(sessionId);
+}

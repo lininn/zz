@@ -117,6 +117,12 @@ export class SessionDataLayer {
     };
   }
 
+  /** 被动详情只借用已存在的投影，不 acquire/connect、不延长任何 runtime/订阅生命周期。 */
+  peek(sessionId: string): ConversationProjectionStore | null {
+    if (this.disposed) return null;
+    return this.entries.get(conversationTopic(sessionId))?.store ?? null;
+  }
+
   /** 当前活跃（含 keep-warm 中）的 session 数，测试与调试观测点。 */
   get size(): number {
     return this.entries.size;

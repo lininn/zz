@@ -33,6 +33,8 @@ import {
   IPluginsService,
   IPluginManagementService,
   ISubagentsService,
+  ICrewService,
+  ICrewAgentCatalogService,
   ICommandsService,
   IHooksService,
   IMemoryService,
@@ -85,6 +87,8 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly pluginSyncService: IPluginSyncService;
   readonly pluginsService: IPluginsService;
   readonly pluginManagementService: IPluginManagementService;
+  readonly crewService: ICrewService;
+  readonly crewAgentCatalogService: ICrewAgentCatalogService;
   readonly subagentsService: ISubagentsService;
   readonly commandsService: ICommandsService;
   readonly hooksService: IHooksService;
@@ -197,6 +201,12 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.pluginManagementService = ProxyChannel.toService<IPluginManagementService>(
       channelClient.getChannel(IPluginManagementService.channelName),
+    );
+    this.crewAgentCatalogService = ProxyChannel.toService<ICrewAgentCatalogService>(
+      channelClient.getChannel(ICrewAgentCatalogService.channelName),
+    );
+    this.crewService = ProxyChannel.toService<ICrewService>(
+      channelClient.getChannel(ICrewService.channelName),
     );
     this.subagentsService = ProxyChannel.toService<ISubagentsService>(
       channelClient.getChannel(ISubagentsService.channelName),

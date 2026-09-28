@@ -117,7 +117,7 @@ export interface GitChangeSummary {
   removed: number;
 }
 
-export type WorkspaceMainView = "chat" | "automations" | "plugin-store";
+export type WorkspaceMainView = "chat" | "automations" | "plugin-store" | "crew";
 
 export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackService"> {
   workspaceReadOnlyReason?: string;
@@ -150,6 +150,8 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   canTaskNavForward: boolean;
   isTerminalOpen: boolean;
   isSidebarVisible: boolean;
+  isMobileSidebar: boolean;
+  handleDismissMobileSidebar: () => void;
   isBrowserOpen: boolean;
   supportsEmbeddedBrowser: boolean;
   isGitOpen: boolean;

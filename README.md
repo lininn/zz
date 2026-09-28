@@ -81,6 +81,17 @@ ZCODE_SERVER_WORKSPACE=/path/to/project pnpm dev:web
 
 Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服务。需要验证完整发行包时，按下方“ZCode 命令行版”打包章节解压运行。
 
+#### 外部 runtime（Codex / Claude CLI）派工
+
+群组派工给 Codex / Claude CLI 成员前，宿主必须显式声明外部运行时隔离已验证（fail-closed 安全设计，未声明时所有外部成员不可用）：
+
+```bash
+# 开发 / 自托管环境
+ZCODE_CREW_OUTER_SANDBOX_READY=1 pnpm dev:web
+```
+
+部署方也可通过程序接口的 `externalRuntime.outerSandboxReady` 选项声明。另有 `ZCODE_CREW_ALLOW_DIRTY_WORKSPACE=1` 允许 write 派工使用未提交改动的工作区（默认拒绝）。侧栏成员的 runtime 状态探测仅作展示，不阻塞派工；任务成败由执行时的 preflight 校验判定。
+
 ### ZCode 命令行版
 
 命令行发行包包含 TUI、Web 和 Agent，统一使用 `zcode` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。

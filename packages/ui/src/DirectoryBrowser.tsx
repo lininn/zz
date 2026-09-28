@@ -6,6 +6,11 @@ import { Button } from "./components/ui/button.js";
 import { Input } from "./components/ui/input.js";
 import { useZCodeIntl } from "./i18n/IntlProvider.js";
 import { logger } from "./logger.js";
+import {
+  foregroundErrorKind,
+  safeForegroundErrorDetail,
+  withForegroundDeadline,
+} from "./lib/foregroundRequest.js";
 
 function createDirectoryBrowserReadParams(
   path: string,
@@ -62,62 +67,103 @@ export function DirectoryBrowser({
   const [inputPath, setInputPath] = useState("");
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<{
+    kind: ReturnType<typeof foregroundErrorKind>;
+    message: string;
+  } | null>(null);
   const [showHiddenDirectories, setShowHiddenDirectories] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const showHiddenDirectoriesRef = useRef(false);
   const requestGuardRef = useRef(createDirectoryBrowserRequestGuard());
+  const requestAbortRef = useRef<AbortController | null>(null);
+  const requestedPathRef = useRef<string | null>(null);
   const { intl } = useZCodeIntl();
 
-  // 初始化：获取 homedir 作为起始路径
-  useEffect(() => {
-    services.systemService
-      .info()
-      .then((info) => {
-        navigateTo(info.homedir);
-      })
-      .catch((err) => {
-        logger.error("[DirectoryBrowser] 获取系统信息失败:", err);
-        setError(intl.formatMessage({ id: "directoryBrowser.errorSystem" }));
-        setLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const beginRequest = () => {
+    const requestId = requestGuardRef.current.begin();
+    requestAbortRef.current?.abort();
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+    setLoading(true);
+    setError(null);
+    setEntries([]);
+    // 上一次成功路径不能在新读取失败/超时时继续被选中，embedded 的外层确认按钮也必须失效。
+    onPathChange?.("");
+    return { requestId, signal: controller.signal };
+  };
+
+  const reportError = (err: unknown, phase: "system" | "directory") => {
+    const kind = foregroundErrorKind(err);
+    const detail = safeForegroundErrorDetail(err);
+    const keys = {
+      authentication: "directoryBrowser.errorAuthentication",
+      permission: "directoryBrowser.errorPermission",
+      closed: "directoryBrowser.errorClosed",
+      timeout: "directoryBrowser.errorTimeout",
+      unavailable: "directoryBrowser.errorUnavailable",
+      unknown:
+        phase === "system" ? "directoryBrowser.errorSystem" : "directoryBrowser.errorReadDir",
+    };
+    logger.warn("[DirectoryBrowser] 目录请求失败:", kind, detail);
+    setError({ kind, message: intl.formatMessage({ id: keys[kind] }, { error: detail }) });
+  };
 
   const navigateTo = async (
     path: string,
     nextShowHiddenDirectories = showHiddenDirectoriesRef.current,
   ) => {
-    const requestId = requestGuardRef.current.begin();
-    setLoading(true);
-    setError("");
+    requestedPathRef.current = path;
+    const { requestId, signal } = beginRequest();
     try {
-      const result = await services.fileService.readdir(
-        createDirectoryBrowserReadParams(path, nextShowHiddenDirectories),
+      const result = await withForegroundDeadline(
+        () =>
+          services.fileService.readdir(
+            createDirectoryBrowserReadParams(path, nextShowHiddenDirectories),
+          ),
+        signal,
       );
-      if (!requestGuardRef.current.isCurrent(requestId)) {
-        return;
-      }
-      const dirs = filterDirectoryBrowserEntries(result);
-      setEntries(dirs);
+      if (!requestGuardRef.current.isCurrent(requestId)) return;
+      setEntries(filterDirectoryBrowserEntries(result));
       setCurrentPath(path);
       setInputPath(path);
       onPathChange?.(path);
-      // 滚动到顶部
       listRef.current?.scrollTo(0, 0);
     } catch (err) {
-      if (!requestGuardRef.current.isCurrent(requestId)) {
-        return;
-      }
-      // 用户快速切换目录或隐藏目录时，较早 readdir 可能后返回；
-      // 过期错误不能覆盖最新导航状态，否则 UI 会展示和当前按钮状态不一致的目录/错误。
-      logger.error("[DirectoryBrowser] readdir 失败:", err);
-      setError(intl.formatMessage({ id: "directoryBrowser.errorReadDir" }, { error: String(err) }));
+      // 快速导航、初始化晚到或卸载后，旧请求的成功和失败都不能覆盖最新状态。
+      if (requestGuardRef.current.isCurrent(requestId)) reportError(err, "directory");
     } finally {
-      if (requestGuardRef.current.isCurrent(requestId)) {
-        setLoading(false);
-      }
+      if (requestGuardRef.current.isCurrent(requestId)) setLoading(false);
     }
+  };
+
+  const initialize = async () => {
+    requestedPathRef.current = null;
+    setCurrentPath("");
+    const { requestId, signal } = beginRequest();
+    try {
+      const info = await withForegroundDeadline(() => services.systemService.info(), signal);
+      if (requestGuardRef.current.isCurrent(requestId)) void navigateTo(info.homedir);
+    } catch (err) {
+      if (requestGuardRef.current.isCurrent(requestId)) reportError(err, "system");
+    } finally {
+      if (requestGuardRef.current.isCurrent(requestId)) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void initialize();
+    return () => {
+      // 只使前台读取失效并清掉定时器，不把卸载误当成远端 RPC 已取消。
+      requestGuardRef.current.begin();
+      requestAbortRef.current?.abort();
+    };
+    // 初始化仅跟随服务连接所有者切换；语言或回调引用变化不重新请求 homedir。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [services]);
+
+  const handleRetry = () => {
+    if (requestedPathRef.current === null) void initialize();
+    else void navigateTo(requestedPathRef.current);
   };
 
   const handleGoUp = () => {
@@ -128,6 +174,8 @@ export function DirectoryBrowser({
 
   const handleInputSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // portal 只改变 DOM 层级，React submit 仍会冒泡到 CrewGroupEditor，触发意外保存。
+    e.stopPropagation();
     const trimmed = inputPath.trim();
     if (trimmed) navigateTo(trimmed);
   };
@@ -137,14 +185,14 @@ export function DirectoryBrowser({
     showHiddenDirectoriesRef.current = nextShowHiddenDirectories;
     setShowHiddenDirectories(nextShowHiddenDirectories);
 
-    if (currentPath) {
-      void navigateTo(currentPath, nextShowHiddenDirectories);
+    if (requestedPathRef.current) {
+      void navigateTo(requestedPathRef.current, nextShowHiddenDirectories);
     }
   };
 
   const handleSelectCurrentPath = () => {
     const selectedPath = currentPath.trim();
-    if (!selectedPath || loading) {
+    if (!selectedPath || loading || error) {
       return;
     }
 
@@ -202,11 +250,28 @@ export function DirectoryBrowser({
       </div>
 
       {/* 错误提示 */}
-      {error ? <div className="text-ui-base text-destructive">{error}</div> : null}
+      {error ? (
+        <div
+          role="alert"
+          className="flex shrink-0 flex-wrap items-center gap-2 text-ui-base text-destructive"
+        >
+          <span className="min-w-0 break-words [overflow-wrap:anywhere]">{error.message}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={error.kind === "closed" || error.kind === "authentication"}
+            onClick={handleRetry}
+          >
+            {intl.formatMessage({ id: "common.retry" })}
+          </Button>
+        </div>
+      ) : null}
 
       {/* 目录列表 */}
       <div
         ref={listRef}
+        aria-busy={loading}
         className="flex-1 flex flex-col overflow-y-auto rounded-lg border border-border bg-background"
       >
         {/* 上级目录 */}
@@ -226,7 +291,7 @@ export function DirectoryBrowser({
           <div className="p-4 text-center text-ui-base text-foreground-subtle">
             {intl.formatMessage({ id: "common.loading" })}
           </div>
-        ) : entries.length === 0 ? (
+        ) : error ? null : entries.length === 0 ? (
           <div className="p-4 text-center text-ui-base text-foreground-subtle">
             {intl.formatMessage({ id: "directoryBrowser.noSubdirs" })}
           </div>
@@ -282,7 +347,7 @@ export function DirectoryBrowser({
             type="button"
             size="lg"
             className="h-10 min-w-0 px-5 text-ui-base"
-            disabled={!currentPath.trim() || loading}
+            disabled={!currentPath.trim() || loading || Boolean(error)}
             onClick={handleSelectCurrentPath}
           >
             {intl.formatMessage({ id: "directoryBrowser.selectDir" })}

@@ -1245,7 +1245,13 @@ async function createSessionWithProjection<T>(
 ): Promise<T> {
   const params = parseParams(zcodeSessionCreateParamsSchema, rawParams);
   const startedAt = Date.now();
-  if (params.sessionId && !params.importedHistory) {
+  // Bugfix：Agent 群组派工（packages/services/src/crew/crewRuntime.ts）以
+  // `agent_crew_<executionId>` 作为 sessionId 创建会话，用于准入租约与恢复续跑。
+  // 该命名空间每执行唯一、不会与普通会话的 active record 冲突，在此放行；
+  // 其余外部指定 id 仍拒绝，防止运行中会话被接管、runtime 泄漏或路由错位。
+  const isCrewDispatchSessionId =
+    typeof params.sessionId === "string" && params.sessionId.startsWith("agent_crew_");
+  if (params.sessionId && !params.importedHistory && !isCrewDispatchSessionId) {
     // 普通 session/create 若允许外部指定 id，会覆盖 context.sessions 里的 active record，
     // 造成运行中会话被接管、runtime 泄漏或后续 setModel/sendPrompt 路由错位。
     throw new ProtocolRequestError(
@@ -1279,6 +1285,38 @@ async function createSessionWithProjection<T>(
   const recordCreateDurationMs = Date.now() - recordStartedAt;
   context.assertServing?.();
   context.sessions.set(sessionId, record);
+  // Bugfix：agent 进程此前从不写 session 表（桌面链路由 server 进程写入，而
+  // crew 派工直连 agent 进程的 protocol createSession），导致消息/输入写入时
+  // 外键 `session_id references session(id)` 失败（FOREIGN KEY constraint
+  // failed），crew 派工每次都进入恢复态死循环。immediate 会话在此立即落
+  // session 行；deferred 会话维持 draft 语义，由 sendPrompt 提升时落库。
+  if (record.persistence !== "deferred") {
+    if (!context.deps.sessionStore) {
+      // Bugfix 诊断：deps.sessionStore 缺失时此前被 ?. 静默跳过，session 行
+      // 永远不落库。这里留明确错误现场。
+      context.logger?.warn("sessionStore missing at createSession persistence", {
+        event: "session.create.store_missing",
+        module: "bootstrap.zcode_protocol",
+        sessionId,
+      });
+    }
+    await context.deps.sessionStore?.createSession({
+      id: sessionId,
+      projectID: projectIdFromDirectory(workspace.workspacePath),
+      workspaceID: workspace.workspaceIdentity?.trim()
+        ? (workspace.workspaceIdentity.trim() as WorkspaceId)
+        : undefined,
+      traceID: trace?.traceId as TraceId | undefined,
+      slug: sessionId,
+      directory: workspace.workspacePath,
+      path: workspace.workspacePath,
+      title: sessionId,
+      titleSource: "custom",
+      version: context.deps.version ?? "0.0.0",
+      permission: { mode: record.app.getMode() },
+      time: { created: Date.now(), updated: Date.now() },
+    });
+  }
   let setInitialModelDurationMs: number | undefined;
   let setInitialThoughtLevelDurationMs: number | undefined;
   let snapshotDurationMs = 0;
@@ -1947,6 +1985,27 @@ export async function sendPrompt(context: ZCodeProtocolAgentServerContext, rawPa
   if (record.persistence === "deferred") {
     // 未发送前的 draft session 不进入两份 sqlite；用户真正发送首条消息时，
     // 才把它提升为普通 session，让后续 list/syncer/task index 按真实任务处理。
+    // Bugfix：提升只改内存标志而未落 session 行，随后消息/输入写入触达
+    // `session_id references session(id)` 外键即失败（FOREIGN KEY constraint
+    // failed）——Agent 群组派工（crew）直连 agent 进程、无 host 侧补写，
+    // 每次派工都因此进入恢复态死循环。提升时先 INSERT session 行（幂等，
+    // on conflict(id) do update），与 imported history 的落库方式一致。
+    await context.deps.sessionStore?.createSession({
+      id: params.sessionId as SessionId,
+      projectID: projectIdFromDirectory(record.workspace.workspacePath),
+      workspaceID: record.workspace.workspaceIdentity?.trim()
+        ? (record.workspace.workspaceIdentity.trim() as WorkspaceId)
+        : undefined,
+      traceID: record.traceContext?.traceId,
+      slug: params.sessionId,
+      directory: record.workspace.workspacePath,
+      path: record.workspace.workspacePath,
+      title: params.content.trim().slice(0, 80) || params.sessionId,
+      titleSource: "custom",
+      version: context.deps.version ?? "0.0.0",
+      permission: { mode: record.app.getMode() },
+      time: { created: Date.now(), updated: Date.now() },
+    });
     record.persistence = "immediate";
   }
   const abortController = new AbortController();

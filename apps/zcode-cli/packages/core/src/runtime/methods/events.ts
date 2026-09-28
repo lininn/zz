@@ -560,6 +560,15 @@ export async function ensureSessionPersisted(
   input: string,
   traceContext: TraceContext,
 ): Promise<void> {
+  // Bugfix 诊断：crew 派工死循环最终定位到本函数早退无日志。插桩区分
+  // 「sessionStore 未注入」与「重复调用」，据此修真正断点。
+  this.logger?.info("ensureSessionPersisted 入口检查", {
+    event: "session.persistence.entry_check",
+    module: "core.runtime",
+    sessionId: this.sessionId,
+    hasSessionStore: Boolean(this.sessionStore),
+    sessionPersisted: this.sessionPersisted,
+  });
   if (!this.sessionStore || this.sessionPersisted) return;
 
   const startedAt = Date.now();

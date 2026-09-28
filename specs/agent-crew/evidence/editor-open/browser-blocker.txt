@@ -1,0 +1,9 @@
+2026-09-26 Playwright preflight — no browser interaction/screenshots completed.
+1. playwright-core default expected chromium_headless_shell-1217, which is not installed.
+2. Explicit installed chromium_headless_shell-1223 launch reached Chromium, then failed:
+   FATAL:base/apple/mach_port_rendezvous_mac.cc:159
+   bootstrap_check_in org.chromium.Chromium.MachPortRendezvousServer: Permission denied (1100)
+   Browser exited with SIGTRAP; browserType.launch: Target page, context or browser has been closed.
+3. curl -I http://localhost:5173/ could not connect in this sandbox.
+No security bypass, browser downgrade, elevated execution, or external production mutation attempted.
+Stage: launch. Desktop/mobile actions, screenshots, real relay transport: NOT RUN.

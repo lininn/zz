@@ -1,4 +1,4 @@
-import type { ZCodeToolExecResource, BackgroundBashOutputResult } from "@zcode/shared";
+import type { CrewRuntimeCommand, CrewRuntimeReply, ZCodeToolExecResource, BackgroundBashOutputResult } from "@zcode/shared";
 import type { AiSdkModelAdapter } from "@zcode/adapters/model";
 import type {
   AgentRuntime,
@@ -92,6 +92,10 @@ import type {
   ExecutionShellSelection,
 } from "@zcode/contracts";
 import type { NodeReplBrowserBroker } from "./node-repl-browser-broker.js";
+import type {
+  ExternalRuntimeDispatchInput,
+  ExternalRuntimeTaskSummary,
+} from "./external-runtime.js";
 import type { SessionTranscriptMessage } from "../session-transcript.js";
 import type { WorkspaceHookReviewCommandResult } from "./workspace-hook-review-controller.js";
 import type { AgentTelemetryRuntimeOwner, WorkspaceHookPolicy } from "@zcode/contracts";
@@ -157,6 +161,15 @@ export interface ZCodeAppOptions {
   onToolExecResource?: (sample: ZCodeToolExecResource) => void;
   /** browser-use 控制端口；注入后 node_repl 的 agent.browsers.* 可用。缺省则不可用。 */
   browserControlPort?: BrowserControlPort;
+  /**
+   * 外部 runtime 调度总开关。缺席或 enabled 为 false 时不装配 dispatch 能力，
+   * 命令层据此回「不可用」而不是空转。outerSandboxReady 必须由部署方显式声明，
+   * 缺席即视为未验证，preflight 会 fail-closed。
+   */
+  externalRuntime?: {
+    enabled?: boolean;
+    outerSandboxReady?: boolean;
+  };
   /** 可由协议宿主注入的进程级 node_repl Browser broker；缺省时 app 自建并拥有。 */
   nodeReplBrowserBroker?: NodeReplBrowserBroker;
   fileSystemPort?: FileSystemPort;
@@ -400,6 +413,27 @@ export interface ZCodeApp {
     taskId: string,
     options?: { traceContext?: TraceContext },
   ): Promise<BackgroundTaskCancelResult>;
+  /**
+   * 外部 runtime 任务派发，服务 `/delegate` 命令。可选能力：仅当 app 显式装配
+   * external runtime 服务时注册；缺席时命令层回「不可用」。失败走 throw——
+   *  dispatch 前的契约拒绝（例如并行写缺少隔离工作区）是调用方传参错误。
+   */
+  crewRuntime?(command: CrewRuntimeCommand): Promise<CrewRuntimeReply>;
+  dispatchExternalRuntime?(
+    input: ExternalRuntimeDispatchInput,
+  ): Promise<{ taskId: string; queuePosition: number }>;
+  /** 外部 runtime 任务枚举面，服务 `/delegate list`。缺席条件同上。 */
+  listExternalRuntimeTasks?(): Promise<ExternalRuntimeTaskSummary[]>;
+  /** 外部 runtime 任务取消面，服务 `/delegate cancel`。缺席条件同上。 */
+  cancelExternalRuntimeTask?(input: { taskId: string }): Promise<{ cancelled: boolean }>;
+  /** 外部 runtime worktree 清理面，服务 `/delegate cleanup`。只清理终态任务，缺席条件同上。 */
+  cleanupExternalRuntimeTask?(input: { taskId: string }): Promise<{ cleaned: boolean; detail?: string }>;
+  /** 外部 runtime worktree diff 读面，服务人工集成评审。缺席条件同上。 */
+  diffExternalRuntimeTask?(input: { taskId: string }): Promise<{
+    diff: string;
+    untracked: string[];
+    truncated: boolean;
+  }>;
   /**
    * workflow run 的事件日志分页（详情页审计面）。可选能力：dwf journal 不可用时 run service
    * 整个不构造，此方法随之缺席，网关据此回结构化的能力不支持错误而不是空页——
@@ -728,6 +762,8 @@ export interface ResolveLatestSessionOptions {
 }
 
 export interface RunZCodeProtocolAgentOptions {
+  /** Trusted deployment proof only; never sourced from RPC/workspace config. */
+  externalRuntime?: { outerSandboxReady?: boolean };
   /** 入口拥有退出时限；bootstrap 只编排取消和资源清理，不直接退出进程。 */
   lifecycle?: {
     readonly signal: AbortSignal;
