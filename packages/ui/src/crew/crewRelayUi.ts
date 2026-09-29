@@ -2,7 +2,7 @@ import type { CrewExecution, CrewGroup, CrewGroupDetail } from "@zcode/shared";
 
 export function crewRelaySettings(group?: CrewGroup) {
   return {
-    relayMode: group?.relayMode ?? "manual",
+    relayMode: group?.relayMode ?? "auto",
     relayAutoHops: group?.relayAutoHops ?? 2,
     relayBudgetMinutes: group?.relayBudgetMinutes ?? 30,
     relayPaused: group?.relayPaused ?? false,

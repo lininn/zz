@@ -4,6 +4,8 @@ import { zcodeWorkspaceRefSchema } from "./zcode-protocol-legacy-types.js";
 /** Crew selects concrete registered adapter IDs; no fallback to the internal runtime. */
 export const crewExternalRuntimeIdSchema = z.enum(["claude-cli", "codex-cli", "opencode-cli"]);
 export const CREW_EXTERNAL_OBJECTIVE_MAX_CHARS = 8000;
+/** 子任务超时上限与群预算上限一致（1440 分钟）；子任务不自设超时，一律采用群级预算。 */
+export const CREW_EXTERNAL_TIMEOUT_MAX_MS = 86_400_000;
 const id = z.string().min(1).max(128);
 export const crewRuntimePermissionSchema = z
   .object({
@@ -52,6 +54,8 @@ export const crewRuntimeCommandSchema = z.discriminatedUnion("action", [
       objective: z.string().min(1).max(CREW_EXTERNAL_OBJECTIVE_MAX_CHARS),
       accessMode: z.enum(["read", "write"]),
       resumeTaskId: id.optional(),
+      /** 群级接力预算（毫秒）。子任务不再自设超时，一律由这里下发。 */
+      timeoutMs: z.number().int().positive().max(CREW_EXTERNAL_TIMEOUT_MAX_MS).optional(),
     })
     .strict(),
   z.object({ action: z.literal("read"), taskId: id }).strict(),

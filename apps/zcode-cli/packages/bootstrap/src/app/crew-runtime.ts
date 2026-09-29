@@ -80,6 +80,8 @@ export function createCrewRuntimeHandler(
       taskId: command.taskId,
       runtimeId: command.runtimeId,
       ...(command.resumeTaskId ? { chatTaskId: command.resumeTaskId } : {}),
+      // 群预算由服务端下发；子任务不自设超时。
+      ...(command.timeoutMs ? { timeoutMs: command.timeoutMs } : {}),
       sessionId: command.sessionId,
       traceId: command.traceId,
       role: command.accessMode === "read" ? "reviewer" : "executor",

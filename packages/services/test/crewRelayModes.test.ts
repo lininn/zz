@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { handoff, relayFixture } from "./crewRelayFixture.js";
 
-test("relay settings default to manual, two automatic hops, thirty minutes and unpaused", async () => {
+test("relay settings default to auto, two automatic hops, thirty minutes and unpaused", async () => {
   const f = await relayFixture();
   try {
     const group = (await f.service.get(f.scope)).group;
-    assert.equal(group.relayMode, "manual");
+    assert.equal(group.relayMode, "auto");
     assert.equal(group.relayAutoHops, 2);
     assert.equal(group.relayBudgetMinutes, 30);
     assert.equal(group.relayPaused, false);
@@ -79,31 +79,33 @@ test("auto: approved PM → developer → PM → developer does not repeat the r
     assert.equal(accepted.relay?.automatic, false);
     await f.service.whenIdle();
     const chain = f.executions();
+    // hop 3 的 Developer 无标签：按「子角色完成即汇报」的兜底规则交回根规划者，
+    // 根规划者（hop 4）也无标签时才是真正的链尾，不再产生第 6 跳。
     assert.deepEqual(
       chain.map((item) => item.hop),
-      [0, 1, 2, 3],
+      [0, 1, 2, 3, 4],
     );
     assert.deepEqual(
       chain.map((item) => item.memberSnapshot.name),
-      ["Coordinator", "Developer", "Coordinator", "Developer"],
+      ["Coordinator", "Developer", "Coordinator", "Developer", "Coordinator"],
     );
     assert.ok(
       chain.every((item) => item.rootRequestId === root.messageId && item.status === "succeeded"),
     );
     assert.deepEqual(
-      chain.slice(0, 3).map((item) => item.relay?.kind),
-      ["plan", "handoff", "handoff"],
+      chain.slice(0, 4).map((item) => item.relay?.kind),
+      ["plan", "handoff", "handoff", "handoff"],
     );
     assert.deepEqual(
-      chain.slice(0, 3).map((item) => item.relay?.status),
-      ["dispatched", "dispatched", "dispatched"],
+      chain.slice(0, 4).map((item) => item.relay?.status),
+      ["dispatched", "dispatched", "dispatched", "dispatched"],
     );
     assert.deepEqual(
-      chain.slice(0, 3).map((item) => item.relay?.automatic),
-      [false, true, true],
+      chain.slice(0, 4).map((item) => item.relay?.automatic),
+      [false, true, true, true],
     );
-    assert.equal(chain[3]!.relay, undefined);
-    assert.equal(f.calls.length, 4);
+    assert.equal(chain[4]!.relay, undefined);
+    assert.equal(f.calls.length, 5);
     assert.ok(
       f.calls.every(
         (call) => call.execution.workspaceBinding.workspaceIdentity === f.binding.workspaceIdentity,
@@ -200,19 +202,73 @@ test("rejecting a plan is persistent and idempotent; later approval conflicts", 
   }
 });
 
+// 只保留「真的不该派工」的输入。此前把 free mention / 多余字段 / 缺 context 都算无效，
+// 正是弱模型（写不出严格 JSON）反复断链的原因；它们现在必须能交接，见下面的用例。
 const invalidFinals = [
-  ["no tag", "Finished"],
-  ["free mention", "@Developer please implement this"],
-  ["invalid JSON", "<crew-handoff>{oops}</crew-handoff>"],
-  ["missing context", '<crew-handoff>{"to":"Developer","objective":"Build"}</crew-handoff>'],
-  [
-    "unknown field",
-    '<crew-handoff>{"to":"Developer","objective":"Build","context":"","extra":1}</crew-handoff>',
-  ],
+  ["no tag at root", "Finished"],
+  ["invalid JSON without mention", "<crew-handoff>{oops}</crew-handoff>"],
   ["blank objective", handoff("Developer", "   ")],
   ["invalid last tag", `${handoff("Developer")}\n<crew-handoff>broken</crew-handoff>`],
   ["unterminated last tag", `${handoff("Developer")}\n<crew-handoff>{`],
 ];
+
+// 不依赖 JSON 的三条通道：@ 提及、容忍多余字段、缺 context。
+for (const [name, text] of [
+  ["plain @ mention", "@Developer please implement this"],
+  ["tag with missing context", '<crew-handoff>{"to":"Developer","objective":"Build"}</crew-handoff>'],
+  [
+    "tag with unknown field",
+    '<crew-handoff>{"to":"Developer","objective":"Build","context":"","extra":1,"note":"hi"}</crew-handoff>',
+  ],
+] as const) {
+  test(`${name}: dispatches without strict JSON`, async () => {
+    const f = await relayFixture({ mode: "auto", reply: () => text });
+    try {
+      const root = await f.start();
+      assert.equal(root.status, "succeeded");
+      assert.equal(root.relay?.to, "Developer");
+      assert.equal(root.relay?.status, "awaiting_user_approval");
+      assert.equal(f.calls.length, 1);
+      await f.respond(root);
+      await f.service.whenIdle();
+      assert.ok(f.calls.length > 1, "approved handoff must dispatch");
+    } finally {
+      await f.close();
+    }
+  });
+}
+// 外部 runtime（claude/codex）被 --json-schema 约束，弱模型普遍不输出标签。
+// 叶子成员完成但没有标签时必须自动交回根规划者，而不是静默断链。
+test("tagless leaf output falls back to the root planner; the root's own tagless output ends the chain", async () => {
+  const f = await relayFixture({
+    mode: "auto",
+    reply: ({ execution }) => (execution.hop === 0 ? handoff("Developer", "Do the work") : "已完工，无标签"),
+  });
+  try {
+    const root = await f.start();
+    await f.respond(root);
+    await f.service.whenIdle();
+    const chain = f.executions();
+    // hop 0 PM 显式派工 → hop 1 叶子无标签 → hop 2 自动交回 PM → PM 无标签 → 链尾。
+    assert.deepEqual(
+      chain.map((item) => item.hop),
+      [0, 1, 2],
+    );
+    assert.deepEqual(
+      chain.map((item) => item.memberSnapshot.name),
+      ["Coordinator", "Developer", "Coordinator"],
+    );
+    const leaf = chain[1]!;
+    assert.equal(leaf.relay?.to, "Coordinator");
+    assert.equal(leaf.relay?.status, "dispatched");
+    assert.equal(leaf.relay?.automatic, true);
+    assert.equal(chain[2]!.relay, undefined);
+    assert.equal(f.calls.length, 3);
+  } finally {
+    await f.close();
+  }
+});
+
 for (const [name, text] of invalidFinals) {
   test(`${name}: successful final output ends the chain without dispatch or a pending proposal`, async () => {
     const f = await relayFixture({ mode: "auto", reply: () => text! });

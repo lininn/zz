@@ -155,11 +155,14 @@ export function runTasksDatabaseMigrations(
     db.exec("COMMIT");
     migrationFacts.committedCount = migrationFacts.executedCount;
   } catch (error) {
-    // 回滚也可能因 IO 失败，不能覆盖真正导致迁移失败的异常。
-    try {
-      if (db.isTransaction) db.exec("ROLLBACK");
-    } catch {
-      /* 调用方关闭连接恢复。 */
+    // 只回滚本函数自己开启的事务（transactionOpen 时事务归调用方）。
+    // 同样不能依赖 isTransaction：Node 22 无该属性会让回滚被静默跳过。
+    if (!options.transactionOpen) {
+      try {
+        db.exec("ROLLBACK");
+      } catch {
+        /* 无活动事务或 IO 失败：由调用方关闭连接恢复。 */
+      }
     }
     if (error && typeof error === "object" && currentMigrationId)
       Object.assign(error, { migrationId: currentMigrationId });

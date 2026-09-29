@@ -21,7 +21,10 @@ import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import type { DatabaseSync as SqliteDatabase } from "node:sqlite";
 import { getTasksIndexDatabasePath } from "#src/paths.js";
-import { runTasksDatabaseMigrations } from "#src/session/tasksDatabase/migrations.js";
+import {
+  areTasksDatabaseMigrationsApplied,
+  runTasksDatabaseMigrations,
+} from "#src/session/tasksDatabase/migrations.js";
 
 const { DatabaseSync } = createRequire(import.meta.url)(
   "node:sqlite",
@@ -44,7 +47,10 @@ export class CrewStore {
       const db = new DatabaseSync(this.path);
       try {
         db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL");
-        runTasksDatabaseMigrations(db);
+        // 每个 CrewService / AgentCatalog 实例都新开连接并初始化，迁移 runner 的
+        // BEGIN IMMEDIATE 会取写锁；群详情轮询也在取写锁，并发初始化因此互相等待，
+        // 5s 超时后抛 "database is locked"。账本只读确认已应用就跳过，不再每次抢写锁。
+        if (!areTasksDatabaseMigrationsApplied(db)) runTasksDatabaseMigrations(db);
         this.connection = db;
       } catch (error) {
         db.close();
@@ -74,7 +80,15 @@ export class CrewStore {
       this.db.exec("COMMIT");
       return result;
     } catch (error) {
-      if (this.db.isTransaction) this.db.exec("ROLLBACK");
+      // 绝不能依赖 node:sqlite 的 isTransaction：Node 22 没有该属性（恒为 undefined），
+      // 旧写法会让回滚被静默跳过，连接永久停在打开的事务里，之后所有 BEGIN 都报
+      // "cannot start a transaction within a transaction"，直到重启 server。
+      // 此处 BEGIN 必然已成功，无条件尝试回滚；无事务时吞掉错误，绝不覆盖原始异常。
+      try {
+        this.db.exec("ROLLBACK");
+      } catch {
+        /* 事务已结束或回滚失败：保留原异常交调用方处理。 */
+      }
       throw error;
     }
   }
@@ -198,7 +212,7 @@ export class CrewStore {
         name,
         now,
         now,
-        settings.relayMode ?? "manual",
+        settings.relayMode ?? "auto",
         settings.relayAutoHops ?? 2,
         settings.relayBudgetMinutes ?? 30,
         Number(settings.relayPaused ?? false),

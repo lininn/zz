@@ -296,11 +296,11 @@ test("upgraded CrewStore maps relay config defaults and updates only supplied fi
     assert.equal(updated.relayMode, "semi");
     assert.equal(updated.relayAutoHops, 0);
     assert.equal(updated.relayBudgetMinutes, 1);
-    const manual = store.transaction(() => store.create("Default", []));
-    assert.equal(manual.relayMode, "manual");
-    assert.equal(manual.relayAutoHops, 2);
-    assert.equal(manual.relayBudgetMinutes, 30);
-    assert.equal(manual.relayPaused, false);
+    const fallback = store.transaction(() => store.create("Default", []));
+    assert.equal(fallback.relayMode, "auto");
+    assert.equal(fallback.relayAutoHops, 2);
+    assert.equal(fallback.relayBudgetMinutes, 30);
+    assert.equal(fallback.relayPaused, false);
   } finally {
     await f.dispose();
   }

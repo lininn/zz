@@ -422,6 +422,23 @@ function renderWebBootstrapError(error: unknown): void {
   );
 }
 
+// WebSocket 一旦断开（server 重启、网络抖动），connectViaWebSocket 会 dispose 整条
+// RPC 通道；没有重连时页面会永远停在加载态，且不会报错。这里按指数退避自动重连，
+// 并用递增 key 强制重挂载 Root——旧 service accessor 已经 dispose，不能继续复用。
+let bootstrapAttempt = 0;
+let reconnectAttempts = 0;
+let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleReconnect(): void {
+  if (reconnectTimer !== undefined) return;
+  const delayMs = Math.min(30_000, 500 * 2 ** reconnectAttempts);
+  reconnectAttempts += 1;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = undefined;
+    void bootstrapWebApp();
+  }, delayMs);
+}
+
 async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
   if (isWebOAuthCallback(params)) {
@@ -439,18 +456,21 @@ async function bootstrapWebApp() {
     bootstrap = await resolveWebBootstrap();
   } catch (error) {
     renderWebBootstrapError(error);
+    scheduleReconnect();
     return;
   }
 
   try {
     const services = await connectViaWebSocket(bootstrap.wsUrl, {
-      onClose: () => {},
+      onClose: () => scheduleReconnect(),
     });
+    reconnectAttempts = 0;
+    bootstrapAttempt += 1;
     const platform = createWebPlatform();
     document.title = "ZCode - Web + Server";
 
     root.render(
-      <AppErrorBoundary>
+      <AppErrorBoundary key={bootstrapAttempt}>
         <ZCodeIntlProvider
           settingService={services.settingService}
           broadcastService={services.broadcastService}
@@ -472,6 +492,7 @@ async function bootstrapWebApp() {
     );
   } catch (error) {
     renderWebBootstrapError(error);
+    scheduleReconnect();
   }
 }
 

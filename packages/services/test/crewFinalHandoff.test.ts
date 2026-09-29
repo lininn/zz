@@ -16,11 +16,16 @@ test("final handoff parsing accepts only the last strict tag, never plain mentio
     null,
   );
   assert.equal(parseCrewHandoff(`${tag("Developer")}\n<crew-handoff>{`), null);
+  // 多余字段/缺 context 不再整条拒绝：弱模型写不出严格 JSON，拒收等于断链。
   assert.equal(
     parseCrewHandoff(
       '<crew-handoff>{"to":"x","objective":"o","context":"","extra":true}</crew-handoff>',
-    ),
-    null,
+    )?.to,
+    "x",
+  );
+  assert.equal(
+    parseCrewHandoff('<crew-handoff>{"to":"x","objective":"o","note":"hi"}</crew-handoff>')?.to,
+    "x",
   );
   assert.equal(
     parseCrewHandoff('<crew-handoff>{"to":"x","objective":"","context":""}</crew-handoff>'),

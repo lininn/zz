@@ -245,7 +245,7 @@ test("busy pause/resume sends only group update; it never approves or replays", 
     render(
       <CrewRelayControl group={chatDetail().group} pending={false} onUpdate={async () => {}} />,
     ),
-    /Manual · 30 minutes · Max 8 hops/,
+    /Automatic · 30 minutes · Max 8 hops/,
   );
 });
 

@@ -116,6 +116,9 @@ export function crewHookHarness(service: ICrewService) {
       if (name.endsWith("crewErrors.js")) return { crewErrorKey };
       // useCrew 的 ownerKey 走 crew 兼容 ID（非 secure context 无 crypto.randomUUID）。
       if (name.endsWith("crewCacheScope.js")) return { crewCacheScope };
+      // 读路径的超时包装在测试里直接透传：只验证接线，不做真实计时。
+      if (name.endsWith("foregroundRequest.js"))
+        return { withForegroundDeadline: (fn: () => Promise<unknown>) => fn() };
       throw new Error(`Unexpected hook dependency ${name}`);
     },
   });

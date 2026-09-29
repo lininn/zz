@@ -108,9 +108,10 @@ export const ExternalRuntimeTaskRequestSchema = z
       ref: z.string().min(1),
     }),
     instructionSnapshotRef: z.string().min(1),
-    timeoutMs: z.number().int().positive().max(3_600_000),
+    // 上限与群级接力预算上限对齐（1440 分钟）；子任务超时由群预算下发。
+    timeoutMs: z.number().int().positive().max(86_400_000),
     budget: z.object({
-      wallTimeMs: z.number().int().positive().max(3_600_000),
+      wallTimeMs: z.number().int().positive().max(86_400_000),
       maxOutputBytes: z.number().int().positive().optional(),
       maxCostUsd: z.number().nonnegative().optional(),
     }),

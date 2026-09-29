@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Copy, Pencil, Plus, RefreshCw, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -50,6 +50,13 @@ export function CrewSection() {
     setBindingNotice(null);
     setConversationId(id);
   };
+  // 选中的会话被删除后主区仍会持续请求它，服务端返回 crew.conversationNotFound
+  // （旧实现还会因回滚失败把连接永久卡死）。会话列表已加载且不含当前选中项时退回默认会话。
+  useEffect(() => {
+    if (!conversationId || crew.conversations.length === 0) return;
+    if (crew.conversations.some((item) => item.conversationId === conversationId)) return;
+    setConversationId(crew.conversations.find((item) => item.isDefault)?.conversationId ?? null);
+  }, [conversationId, crew.conversations]);
   return (
     <div className="min-w-0 space-y-5" data-testid="crew-section">
       <header className="flex flex-wrap items-start justify-between gap-3">

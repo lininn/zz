@@ -268,6 +268,9 @@ for (const final of ["Final answer without delegation", ""]) {
       const prompt = (f.sent[0]?.envelope.payload as { text: string }).text;
       assert(prompt.includes("# Controlled crew handoff"));
       assert(prompt.includes('Allowed next members (exact names): ["Review"]'));
+      // 协议层必须显式覆盖角色/任务正文里的“等用户确认”类措辞，否则下游成员会把
+      // 规划叙述当成停止信号，链在 hop=1 断掉。
+      assert(prompt.includes("OVERRIDES the role description and the task text"));
     } finally {
       await f.close();
     }

@@ -3,10 +3,12 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   resolveWorkspaceKey,
   crewRuntimeReplySchema,
+  CREW_EXTERNAL_TIMEOUT_MAX_MS,
   type CrewWorkspaceBinding,
   type CrewRuntimeTask,
   type CrewRuntimeCommand,
   type CrewRuntimeReply,
+  type CrewRuntimeProbe,
 } from "@zcode/shared";
 import type { IZCodeAgentService } from "#src/zcode-agent/zcodeAgent.js";
 import type { CrewRuntimePort } from "./contract.js";
@@ -42,6 +44,16 @@ export function createCrewExternalRuntime(options: {
 }) {
   const { agent, leases } = options;
   const active = new Map<string, Active>();
+  // 群详情每 2.5s 轮询会对同一外部成员反复探测：每次都要 spawn CLI（--version/auth），
+  // 耗时数秒。按 binding+成员+访问模式缓存，并采用 stale-while-revalidate：
+  // 命中未过期直接返回；命中已过期立即返回旧值、后台刷新；只有完全无缓存才等待首次探测。
+  // 这样读路径（crew.get）永远不会被 CLI 探测阻塞。
+  const PROBE_TTL_MS = 30_000;
+  // 后台刷新必须自身有界：Agent 进程被杀/正在重连时探测可能永不 settle，
+  // 否则缓存永远填不上、详情投影永远拿不到可用性信息（且 probeRefreshes 永久占用）。
+  const PROBE_READ_TIMEOUT_MS = 8_000;
+  const probes = new Map<string, { at: number; value: CrewRuntimeProbe | null }>();
+  const probeRefreshes = new Map<string, Promise<void>>();
   async function command(binding: CrewWorkspaceBinding, input: CrewRuntimeCommand) {
     if (!agent.crewRuntime)
       throw Object.assign(new Error("crew.runtimeUnavailable"), { code: -32601 });
@@ -69,30 +81,67 @@ export function createCrewExternalRuntime(options: {
     return state.releasing;
   }
   return {
-    async probeMember(binding, member) {
+    async probeMember(binding, member, callOptions) {
       if (member.runtime === "zcode") return null;
-      try {
-        await options.preflight(binding);
-        const reply = await command(binding, {
-          action: "probe",
-          runtimeId: member.runtime,
-          accessMode: member.accessMode,
-        });
-        if (reply.kind !== "probe" || reply.probe.runtimeId !== member.runtime)
-          throw new Error("crew.runtimeUnavailable");
-        return reply.probe;
-      } catch (error) {
-        // 旧 Agent bundle / 缺失 bridge 不等于 vendor 未安装；只识别协议错误码，
-        // 不把可能包含凭据或用户路径的任意异常正文传到 UI。
-        const missingBridge = error instanceof Error && "code" in error && error.code === -32601;
-        return {
-          runtimeId: member.runtime,
-          available: false,
-          reason: missingBridge
-            ? "crew/runtime unavailable: restart the server with a current Agent runtime"
-            : "crew.runtimeUnavailable",
-        };
+      // 收窄结果必须存成 const：在下面的闭包里读 member.runtime 会丢失收窄，
+      // 重新变回含 "zcode" 的联合类型（member 是参数，TS 不跨函数边界保留收窄）。
+      const runtimeId = member.runtime;
+      const cacheKey = `${resolveWorkspaceKey(binding)}|${runtimeId}|${member.accessMode}`;
+      const fresh = async (): Promise<CrewRuntimeProbe> => {
+        try {
+          await options.preflight(binding);
+          const reply = await command(binding, {
+            action: "probe",
+            runtimeId,
+            accessMode: member.accessMode,
+          });
+          if (reply.kind !== "probe" || reply.probe.runtimeId !== runtimeId)
+            throw new Error("crew.runtimeUnavailable");
+          return reply.probe;
+        } catch (error) {
+          // 旧 Agent bundle / 缺失 bridge 不等于 vendor 未安装；只识别协议错误码，
+          // 不把可能包含凭据或用户路径的任意异常正文传到 UI。
+          const missingBridge = error instanceof Error && "code" in error && error.code === -32601;
+          return {
+            runtimeId,
+            available: false,
+            reason: missingBridge
+              ? "crew/runtime unavailable: restart the server with a current Agent runtime"
+              : "crew.runtimeUnavailable",
+          };
+        }
+      };
+      // 详情投影（cached）绝不允许等待 CLI：命中未过期直接返回；命中已过期返回旧值并
+      // 后台刷新；连缓存都没有时也立即返回 null（本轮不展示可用性），探测在后台完成、
+      // 下一轮轮询自然拿到结果。只有准入/接力/执行路径才同步等待探测结果。
+      if (callOptions?.cached) {
+        const cached = probes.get(cacheKey);
+        if (cached && Date.now() - cached.at < PROBE_TTL_MS) return cached.value;
+        if (!probeRefreshes.has(cacheKey)) {
+          // 后台刷新自身有界：Agent 掉线时探测可能永不 settle，必须超时收口，
+          // 否则缓存填不上、probeRefreshes 永久占用。
+          const pending = Promise.race([
+            fresh(),
+            new Promise<CrewRuntimeProbe>((resolve) => {
+              const timer = setTimeout(
+                () => resolve({ runtimeId, available: false, reason: "crew.runtimeUnavailable" }),
+                PROBE_READ_TIMEOUT_MS,
+              );
+              timer.unref?.();
+            }),
+          ])
+            .then((value) => {
+              probes.set(cacheKey, { at: Date.now(), value });
+            })
+            .finally(() => probeRefreshes.delete(cacheKey));
+          probeRefreshes.set(cacheKey, pending);
+        }
+        return cached?.value ?? null;
       }
+      // 准入/接力/执行前必须实时探测：可用性可能在缓存窗口内变化，不能复用旧结果。
+      const value = await fresh();
+      probes.set(cacheKey, { at: Date.now(), value });
+      return value;
     },
     inspect: (binding, taskId) => task(binding, { action: "read", taskId }),
     async respondPermission(binding, taskId, requestId, approved) {
@@ -156,6 +205,12 @@ export function createCrewExternalRuntime(options: {
           traceId: input.execution.executionId,
           objective,
           accessMode: input.member.accessMode,
+          // 子任务不自设超时：直接采用群级接力预算（root 冻结快照）。
+          // 链级墙钟仍由 CrewExecutionDeadline 兜底，这里只作为进程 supervisor 上限。
+          timeoutMs: Math.min(
+            CREW_EXTERNAL_TIMEOUT_MAX_MS,
+            (input.execution.relayBudgetMinutes ?? 30) * 60_000,
+          ),
           ...(resumeTaskId ? { resumeTaskId } : {}),
         });
         let snapshot = await state.start;

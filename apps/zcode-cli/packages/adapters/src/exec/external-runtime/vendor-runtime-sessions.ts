@@ -222,7 +222,7 @@ export class VendorRuntimeSessions {
       : permissionPending
         ? "External runtime permission reply is unavailable"
         : processFailed
-          ? `External runtime exited unsuccessfully (${completed.reason})`
+          ? `External runtime exited unsuccessfully (reason=${completed.reason}, exitCode=${completed.exitCode ?? "null"}, signal=${completed.signal ?? "none"})`
           : (failure ?? structured!.summary);
     yield envelope(
       "task.completed",

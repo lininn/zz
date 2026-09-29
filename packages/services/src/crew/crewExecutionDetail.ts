@@ -51,7 +51,10 @@ export async function readCrewGroupDetail(
     detail.runtimeAvailability = (
       await Promise.all(
         detail.resolvedMembers.map(async (member) => {
-          const probe = await runtime.probeMember!(detail.group.workspaceBinding!, member);
+          // 详情投影按 2.5s 轮询：用缓存避免每轮 spawn CLI；准入路径不受影响。
+          const probe = await runtime.probeMember!(detail.group.workspaceBinding!, member, {
+            cached: true,
+          });
           return probe ? { ...probe, memberId: member.memberId } : null;
         }),
       )

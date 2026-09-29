@@ -15,7 +15,6 @@ import {
   safeArgument,
   validateVendorOptions,
   VENDOR_ENV_ALLOWLIST,
-  VENDOR_FINAL_JSON_SCHEMA,
   type VendorCliAdapterOptions,
 } from "./vendor-cli-support.js";
 
@@ -101,19 +100,23 @@ export class CodexCliAdapter implements ExternalRuntimePort {
       request.resumeNativeSessionId === undefined
         ? undefined
         : safeArgument(request.resumeNativeSessionId, "Codex resume session id");
-    let schema: string;
-    try {
-      schema = JSON.stringify(this.options.outputSchema ?? VENDOR_FINAL_JSON_SCHEMA);
-    } catch {
-      throw new Error("Invalid Codex output schema");
+    // 默认不传 --output-schema：强制 JSON 会让弱模型丢产出。仅在调用方显式指定 schema 时启用。
+    let schema: string | undefined;
+    if (this.options.outputSchema !== undefined) {
+      try {
+        schema = JSON.stringify(this.options.outputSchema);
+      } catch {
+        throw new Error("Invalid Codex output schema");
+      }
+      if (!schema || schema.length > MAX_SCHEMA_LENGTH)
+        throw new Error("Invalid Codex output schema");
     }
-    if (!schema || schema.length > MAX_SCHEMA_LENGTH)
-      throw new Error("Invalid Codex output schema");
-    const directory = await mkdtemp(join(tmpdir(), "crew-codex-schema-"));
+    const directory = schema === undefined ? undefined : await mkdtemp(join(tmpdir(), "crew-codex-schema-"));
     let runtimeFailed = false;
     try {
-      const schemaFile = join(directory, "final.json");
-      await writeFile(schemaFile, schema, { mode: 0o600 });
+      const schemaFile = directory === undefined ? undefined : join(directory, "final.json");
+      if (schemaFile !== undefined && schema !== undefined)
+        await writeFile(schemaFile, schema, { mode: 0o600 });
       const args = [
         "exec",
         // exec 子命令参数：可写成员按部署方要求使用 yolo（跳过审批与沙箱）；
@@ -134,8 +137,7 @@ export class CodexCliAdapter implements ExternalRuntimePort {
             : []),
         ...(nativeId ? ["resume", nativeId] : []),
         "--json",
-        "--output-schema",
-        schemaFile,
+        ...(schemaFile === undefined ? [] : ["--output-schema", schemaFile]),
         ...(this.options.defaultModel
           ? ["--model", safeArgument(this.options.defaultModel, "Codex model")]
           : []),
@@ -169,7 +171,7 @@ export class CodexCliAdapter implements ExternalRuntimePort {
       runtimeFailed = true;
       throw error;
     } finally {
-      await this.removeSchemaDirectory(directory, runtimeFailed);
+      if (directory !== undefined) await this.removeSchemaDirectory(directory, runtimeFailed);
     }
   }
 

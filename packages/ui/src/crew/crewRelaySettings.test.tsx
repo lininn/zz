@@ -89,7 +89,7 @@ test("actual group form saves defaults/new settings and preserves paused state; 
     {
       name: group.name,
       members: [],
-      relayMode: "manual",
+      relayMode: "auto",
       relayAutoHops: 2,
       relayBudgetMinutes: 30,
       relayPaused: true,

@@ -119,3 +119,25 @@ test("recovery in A blocks only A admission/claim while B context and queue rema
     await f.dispose();
   }
 });
+
+// 回归：事务体内抛错必须回滚，否则连接永久停在打开的事务里，
+// 之后每个 BEGIN 都报 "cannot start a transaction within a transaction"（线上删会话后卡死的根因）。
+// 旧实现用 `if (db.isTransaction)` 判断，而 Node 22 的 node:sqlite 没有该属性，
+// 回滚被静默跳过；本断言不依赖 isTransaction，因此在 Node 22/24 下都成立。
+test("a throwing transaction rolls back and leaves the connection reusable", async () => {
+  const f = await fixture();
+  try {
+    assert.throws(
+      () => f.store.transaction(() => {
+        throw new Error("boom");
+      }),
+      /boom/,
+    );
+    // 连接若被卡住，这里会抛 "cannot start a transaction within a transaction"。
+    const after = f.store.transaction(() => f.store.create("AfterFailure", []));
+    assert.equal(after.name, "AfterFailure");
+    assert.equal(f.store.group(after.groupId).name, "AfterFailure");
+  } finally {
+    await f.dispose();
+  }
+});

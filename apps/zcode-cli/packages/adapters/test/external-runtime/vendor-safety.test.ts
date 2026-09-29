@@ -122,22 +122,37 @@ for (const [vendor, Adapter] of [
   });
 }
 
-test("Codex schema temp file is cleaned and no unsafe flags are present", async (t) => {
+test("Codex does not force a JSON output schema by default", async (t) => {
+  // 强制 --output-schema 会让写不出 JSON 的弱模型整段丢产出，是历史反复断链的根因。
+  // 默认必须不带该参数，让明文 summary 走明文兜底；交接由 @成员名/标签承担。
   const fixture = await vendorFixture(t, "codex", "success");
   const adapter = new CodexCliAdapter({ processHost: fixture.host, outerSandboxReady: true });
   await collectEvents(adapter.start(vendorRequest("codex", fixture.cwd)));
   const args = fixture.starts[0]!.command.args!;
-  const schema = args[args.indexOf("--output-schema") + 1]!;
-  await assert.rejects(access(schema), { code: "ENOENT" });
-  assert.equal(args.includes("--dangerously-bypass-approvals-and-sandbox"), false);
+  assert.equal(args.includes("--output-schema"), false);
   assert.equal(args.includes("--approve-for-me"), false);
-  // 0.157 的 exec 子命令无 --ask-for-approval（顶层传该参数会 argv 解析失败 exit 2），
-  // 沙箱经 exec 内的 -s 传递；--ignore-user-config 会丢弃用户自定义 model provider。
+  // 0.157 的 exec 子命令无 --ask-for-approval（顶层传该参数会 argv 解析失败 exit 2）；
+  // --ignore-user-config 会丢弃用户自定义 model provider，两者都必须缺席。
   assert.equal(args.includes("--ask-for-approval"), false);
   assert.equal(args.includes("--ignore-user-config"), false);
   assert.equal(args[0], "exec");
-  assert.equal(args[1], "-s");
-  assert.equal(args[2], "workspace-write");
+  assert.equal(args.includes("--json"), true);
+  assert.equal(args.includes("--skip-git-repo-check"), true);
+});
+
+test("Codex caller-supplied schema uses a temp file and cleans it up", async (t) => {
+  const fixture = await vendorFixture(t, "codex", "success");
+  const adapter = new CodexCliAdapter({
+    processHost: fixture.host,
+    outerSandboxReady: true,
+    outputSchema: { type: "object", required: ["summary"] },
+  });
+  await collectEvents(adapter.start(vendorRequest("codex", fixture.cwd)));
+  const args = fixture.starts[0]!.command.args!;
+  const schemaIndex = args.indexOf("--output-schema");
+  assert.notEqual(schemaIndex, -1);
+  const schema = args[schemaIndex + 1]!;
+  await assert.rejects(access(schema), { code: "ENOENT" });
 });
 
 test("OpenCode never silently drops a caller's output schema", async (t) => {

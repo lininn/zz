@@ -32,16 +32,11 @@ import type {
   Logger,
 } from "@zcode/contracts";
 
-const FINAL_OUTPUT_SCHEMA: Record<string, unknown> = {
-  type: "object",
-  additionalProperties: false,
-  required: ["summary"],
-  properties: {
-    summary: { type: "string", minLength: 1 },
-    status: { enum: ["succeeded", "failed", "cancelled"] },
-    artifacts: { type: "array", items: { type: "string" } },
-  },
-};
+/** 非 crew 调用方的兜底超时；crew 任务由群级 relayBudgetMinutes 决定。 */
+const DEFAULT_EXTERNAL_TASK_TIMEOUT_MS = 600_000;
+
+// 故意不向 vendor 传 --json-schema：强制 JSON 会让弱模型整段丢产出（历史反复断链的根因）。
+// 终态改为「能解析 JSON 就用，否则用明文兜底」，交接靠 @成员名 / 标签 / 兜底三通道。
 
 export interface ExternalRuntimeBootstrapOptions {
   dbPath: string;
@@ -97,6 +92,8 @@ export interface ExternalRuntimeDispatchInput {
   unsafeTextFallback: boolean;
   sessionId: string;
   traceId: string;
+  /** 群级接力预算下发的子任务超时；缺省仅用于非 crew 调用方。 */
+  timeoutMs?: number;
 }
 
 export interface ExternalRuntimeTaskSummary {
@@ -132,7 +129,6 @@ export async function createExternalRuntimeFacade(
     processHost,
     outerSandboxReady: options.outerSandboxReady,
     preflightRunner: createSystemProbeRunner(),
-    outputSchema: FINAL_OUTPUT_SCHEMA,
     testedVersion: "2.1.241",
     now,
   });
@@ -279,8 +275,13 @@ export async function createExternalRuntimeFacade(
         },
         baseline: { kind: "git", ref: "HEAD" },
         instructionSnapshotRef: taskId,
-        timeoutMs: 600_000,
-        budget: { wallTimeMs: 600_000, maxOutputBytes: 1_048_576 },
+        // 子任务不自设超时：超时一律采用调用方下发的群级接力预算。
+        // 只有非 crew 调用方（未传 timeoutMs）才回退默认值。
+        timeoutMs: input.timeoutMs ?? DEFAULT_EXTERNAL_TASK_TIMEOUT_MS,
+        budget: {
+          wallTimeMs: input.timeoutMs ?? DEFAULT_EXTERNAL_TASK_TIMEOUT_MS,
+          maxOutputBytes: 1_048_576,
+        },
         verification: { commandIds, ...(input.skipVerification ? { skip: true } : {}) },
         retention: { structuredDays: 30, rawDays: 7 },
         sessionMode: "one-shot",

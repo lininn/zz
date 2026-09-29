@@ -168,7 +168,7 @@ export async function assertDirectoryAndCreateCompatibility(t: TestContext, f: R
       if (expected.memberId !== undefined) assert.equal(member.memberId, expected.memberId);
       if (expected.accessMode !== undefined) assert.equal(member.accessMode, expected.accessMode);
     });
-    assert.equal(group.relayMode, input.relayMode ?? "manual");
+    assert.equal(group.relayMode, input.relayMode ?? "auto");
     if (input.relayAutoHops !== undefined) assert.equal(group.relayAutoHops, input.relayAutoHops);
     if (input.relayBudgetMinutes !== undefined)
       assert.equal(group.relayBudgetMinutes, input.relayBudgetMinutes);

@@ -16,6 +16,7 @@ import type {
   CrewUpdateParams,
 } from "@zcode/shared";
 import { crewErrorKey } from "@/crew/crewErrors.js";
+import { withForegroundDeadline } from "@/lib/foregroundRequest.js";
 import { crewCacheScope } from "./crewCacheScope.js";
 import { useServices } from "./useServices.js";
 import { createCrewRequestScope, runCrewCommand } from "./crewRequestScope.js";
@@ -49,7 +50,9 @@ export function useCrew(
   // 隐藏只暂停 fetcher/轮询，不丢弃同 key 缓存，避免设置覆盖时卸载输入框并丢失草稿。
   const list = useSWR(
     crewService && !groupId ? listKey : null,
-    crewService && visible ? () => crewService.list({}) : null,
+    // 读路径必须有界：WebSocket 半开或服务端挂起时，SWR 的 isLoading 会永远为 true，
+    // 页面卡在「正在加载」既不报错也无法重试。超时按前台错误处理，走 error+重试。
+    crewService && visible ? () => withForegroundDeadline(() => crewService.list({})) : null,
     {
       ...options,
       refreshInterval: (groups) =>
@@ -58,7 +61,9 @@ export function useCrew(
   );
   const conversations = useSWR(
     crewService ? conversationsKey : null,
-    crewService && groupId && visible ? () => crewService.listConversations({ groupId }) : null,
+    crewService && groupId && visible
+      ? () => withForegroundDeadline(() => crewService.listConversations({ groupId }))
+      : null,
     {
       ...options,
       refreshInterval: (items) =>
@@ -75,20 +80,21 @@ export function useCrew(
   const detail = useSWR(
     crewService && readDetail ? detailKey : null,
     crewService && groupId && selectedId && visible && readDetail
-      ? async () => {
-          // 无效/错属响应曾被静默过滤成 undefined，主区因而误显示“未选择”。
-          // 在读边界拒绝，让 SWR 保留目标 key 并进入可重试的错误态。
-          const view = crewGroupDetailSchema.parse(
-            await crewService.get({ groupId, conversationId: selectedId }),
-          );
-          if (view.group.groupId !== groupId) throw new Error("crew.groupNotFound");
-          if (
-            view.conversation.groupId !== groupId ||
-            view.conversation.conversationId !== selectedId
-          )
-            throw new Error("crew.conversationNotFound");
-          return view;
-        }
+      ? () =>
+          withForegroundDeadline(async () => {
+            // 无效/错属响应曾被静默过滤成 undefined，主区因而误显示“未选择”。
+            // 在读边界拒绝，让 SWR 保留目标 key 并进入可重试的错误态。
+            const view = crewGroupDetailSchema.parse(
+              await crewService.get({ groupId, conversationId: selectedId }),
+            );
+            if (view.group.groupId !== groupId) throw new Error("crew.groupNotFound");
+            if (
+              view.conversation.groupId !== groupId ||
+              view.conversation.conversationId !== selectedId
+            )
+              throw new Error("crew.conversationNotFound");
+            return view;
+          })
       : null,
     {
       ...options,

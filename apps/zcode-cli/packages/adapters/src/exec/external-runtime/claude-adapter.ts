@@ -49,6 +49,7 @@ export interface ClaudeCliAdapterOptions {
 type EnvelopeFn = (type: string, payload: unknown, sessionId?: string) => ExternalRuntimeEventEnvelope;
 
 const HELP_ARGS = ["--help"] as const;
+const STDERR_TAIL_CHARS = 2000;
 
 function capabilityProbe(
   capability: "structuredOutput" | "structuredTerminalResult" | "permissionMode",
@@ -60,6 +61,15 @@ function capabilityProbe(
 async function stopClaudeProcess(handle: ExternalRuntimeProcessHandle): Promise<void> {
   try { await handle.cancel(); await handle.completed; }
   catch { throw new Error("recovery_required: Claude process stop could not be proven"); }
+}
+
+/** vendor stderr 可能含密钥/带凭据的 URL；只保留有界尾部，脱敏后再进入错误消息。 */
+function redactExternalStderr(value: string): string {
+  return value
+    .replace(/\b(?:sk|ghp|gho|xox[baprs])-[\w-]{8,}\b/gi, "[REDACTED]")
+    .replace(/((?:api[_-]?key|access[_-]?token|token|secret|password)\s*[:=]\s*)\S+/gi, "$1[REDACTED]")
+    .replace(/\/\/[^@/\s]+@/g, "//[REDACTED]@")
+    .slice(-STDERR_TAIL_CHARS);
 }
 
 export class ClaudeCliAdapter implements ExternalRuntimePort {
@@ -244,9 +254,15 @@ export class ClaudeCliAdapter implements ExternalRuntimePort {
     };
     yield envelope("task.started", { runtimeState: "running" });
     let remainder = "";
+    let stderrTail = "";
     for await (const chunk of handle.output) {
       // stderr 只作诊断，不能把其中 JSON 误认成成功终态或拼接进 stdout 事件。
-      if (chunk.stream === "stderr") { yield envelope("warning", { nativeType: "stderr" }); continue; }
+      // 但进程非零退出时它是唯一线索：保留有界尾部，脱敏后进入错误消息。
+      if (chunk.stream === "stderr") {
+        stderrTail = `${stderrTail}${chunk.data}`.slice(-STDERR_TAIL_CHARS);
+        yield envelope("warning", { nativeType: "stderr" });
+        continue;
+      }
       const drained = this.consumeBuffered(remainder + chunk.data, false, envelope, onSessionId);
       remainder = drained.remainder;
       if (drained.terminal) terminal = this.terminalResult(request, drained.terminal);
@@ -265,7 +281,9 @@ export class ClaudeCliAdapter implements ExternalRuntimePort {
       return;
     }
     if (exit.reason !== "exit" || exit.exitCode !== 0)
-      throw new Error("protocol_error: Claude process did not exit successfully");
+      throw new Error(
+        `protocol_error: Claude process did not exit successfully (reason=${exit.reason}, exitCode=${exit.exitCode ?? "null"}, signal=${exit.signal ?? "none"})${stderrTail.trim() ? `; stderr: ${redactExternalStderr(stderrTail.trim())}` : ""}`,
+      );
     if (!terminal) {
       throw new Error("protocol_error: external runtime ended without a terminal result");
     }
@@ -322,26 +340,36 @@ export class ClaudeCliAdapter implements ExternalRuntimePort {
   }
 
   private terminalResult(request: ExternalRuntimeTaskRequest, native: ClaudeNativeEvent): ExternalRuntimeResult {
-    const structured = ClaudeFinalOutputSchema.safeParse(
-      (native as Record<string, unknown>).structured_output,
-    );
+    const record = native as Record<string, unknown>;
+    const structured = ClaudeFinalOutputSchema.safeParse(record.structured_output);
+    // vendor 明确报错优先于模型自报成功，避免错误结果被群板提升为成功。
+    const failed = native.is_error === true || native.subtype !== "success";
+    const finish = (
+      summary: string,
+      status: "succeeded" | "failed" | "cancelled",
+      artifacts: string[],
+    ) =>
+      ExternalRuntimeResultSchema.parse({
+        schemaVersion: 1,
+        taskId: request.taskId,
+        attemptId: request.attemptId,
+        runtimeId: request.runtimeId,
+        status,
+        runtimeState: status,
+        summary: summary.slice(0, 8000) || "(no output)",
+        completedAt: this.now().toISOString(),
+        ...(native.session_id ? { nativeSessionId: native.session_id } : {}),
+        artifacts,
+      });
     if (!structured.success) {
+      // 弱模型经常写不出 JSON。绝不能因此把整个任务判成 protocol_error 而丢掉产出：
+      // 用 vendor 的 result 明文兜底为 summary，链路是否继续交给上层的标签/@ 判定。
+      const plain = (typeof record.result === "string" ? record.result : "").trim();
+      if (failed) return finish(plain || "external runtime reported failure", "failed", []);
+      if (plain) return finish(plain, "succeeded", []);
       throw new Error("protocol_error: external runtime terminal result is not structured");
     }
-    // vendor 明确报错优先于模型 JSON 中的自报成功，避免错误结果被群板提升为成功。
-    const status = native.is_error === true || native.subtype !== "success"
-      ? "failed" : structured.data.status ?? "succeeded";
-    return ExternalRuntimeResultSchema.parse({
-      schemaVersion: 1,
-      taskId: request.taskId,
-      attemptId: request.attemptId,
-      runtimeId: request.runtimeId,
-      status,
-      runtimeState: status,
-      summary: structured.data.summary,
-      completedAt: this.now().toISOString(),
-      ...(native.session_id ? { nativeSessionId: native.session_id } : {}),
-      artifacts: structured.data.artifacts,
-    });
+    const status = failed ? "failed" : structured.data.status ?? "succeeded";
+    return finish(structured.data.summary, status, structured.data.artifacts);
   }
 }

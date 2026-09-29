@@ -61,9 +61,11 @@ export interface CrewRuntimePort {
   preflight(binding: CrewWorkspaceBinding): Promise<void>;
   /** 人工确认恢复后的强制收口：清理 interrupted 准入 entry 与孤儿进程组。 */
   confirmRecovery?(binding: CrewWorkspaceBinding): Promise<void>;
+  /** cached 仅供详情投影轮询；准入/接力/执行不得传，否则会掩盖可用性变化。 */
   probeMember?(
     binding: CrewWorkspaceBinding,
     member: CrewResolvedMember,
+    options?: { cached?: boolean },
   ): Promise<CrewRuntimeProbe | null>;
   inspect?(binding: CrewWorkspaceBinding, taskId: string): Promise<CrewRuntimeTask>;
   respondPermission?(

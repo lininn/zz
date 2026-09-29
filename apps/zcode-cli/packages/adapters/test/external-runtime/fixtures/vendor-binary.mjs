@@ -18,9 +18,14 @@ if (scenario === "probe") {
     );
   process.exit(0);
 }
+// 真 codex 不带 --output-schema 也能跑；替身必须同样支持两种调用，
+// 否则「默认不强制 JSON」这个行为在测试里根本走不到。
 if (vendor === "codex") {
-  const schema = args[args.indexOf("--output-schema") + 1];
-  if (!schema || !JSON.parse(await readFile(schema, "utf8")).properties.summary) process.exit(8);
+  const schemaIndex = args.indexOf("--output-schema");
+  if (schemaIndex >= 0) {
+    const schema = args[schemaIndex + 1];
+    if (!schema || !JSON.parse(await readFile(schema, "utf8")).properties.summary) process.exit(8);
+  }
 }
 if (scenario === "hang") {
   emit(

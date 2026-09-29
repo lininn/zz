@@ -31,17 +31,20 @@ test("concurrent duplicate approvals create exactly one child and return the sou
       ),
     );
     await f.service.whenIdle();
-    assert.equal(f.executions().length, 2);
-    assert.equal(f.calls.length, 2);
+    // hop 1 的 Developer 返回 "Done"（无标签）：按「子角色完成即汇报」的兜底规则自动交回
+    // 根规划者 Coordinator（hop 2），Coordinator 无标签时才是链尾。
+    // 重复批准只多出这一个子节点，不会各自再派生——这正是本用例要锁定的性质。
+    assert.equal(f.executions().length, 3);
+    assert.equal(f.calls.length, 3);
     assert.equal(f.executions()[1]!.hop, 1);
     assert.equal(f.executions()[1]!.rootRequestId, root.rootRequestId);
     const messages = f.store.messages(f.scope.groupId, f.scope.conversationId);
-    assert.equal(messages.filter((message) => message.sender === "user").length, 2);
-    assert.equal(messages.filter((message) => message.sender === "member").length, 2);
+    assert.equal(messages.filter((message) => message.sender === "user").length, 3);
+    assert.equal(messages.filter((message) => message.sender === "member").length, 3);
     assert.deepEqual(await f.respond(root), responses[0]);
     await assert.rejects(f.respond(root, false), /relayDecisionConflict/);
     await f.service.whenIdle();
-    assert.equal(f.calls.length, 2);
+    assert.equal(f.calls.length, 3);
   } finally {
     release.resolve(null);
     await pending?.catch(() => {});
@@ -238,7 +241,9 @@ test("relay decisions are conversation-scoped and omitted conversationId means t
     await f.respond(root);
     await f.service.whenIdle();
     assert.equal(f.executions().length, 0);
-    assert.equal(f.executions(f.otherConversation.conversationId).length, 2);
+    // hop 1 的 Developer 无标签：自动交回根规划者（hop 2），后者无标签才是链尾。
+    // 本用例重点是会话隔离：批准只推进它自己那个会话，默认会话保持 0 执行。
+    assert.equal(f.executions(f.otherConversation.conversationId).length, 3);
     const defaultRoot = await f.start();
     const source = await f.service.respondRelay({
       groupId: f.group.groupId,
@@ -247,7 +252,7 @@ test("relay decisions are conversation-scoped and omitted conversationId means t
     });
     assert.equal(source.executionId, defaultRoot.executionId);
     await f.service.whenIdle();
-    assert.equal(f.executions().length, 2);
+    assert.equal(f.executions().length, 3);
   } finally {
     await f.close();
   }
@@ -269,7 +274,7 @@ test("identical root IDs and objective fingerprints are isolated across conversa
       const chain = f.executions(conversationId);
       assert.deepEqual(
         chain.map((item) => item.hop),
-        [0, 1],
+        [0, 1, 2],
       );
       assert.equal(chain[0]!.relay?.status, "dispatched");
       assert.ok(
@@ -278,7 +283,9 @@ test("identical root IDs and objective fingerprints are isolated across conversa
         ),
       );
     }
-    assert.equal(f.calls.length, 4);
+    // 每会话 3 跳：hop0 计划 → hop1 叶子（无标签）→ hop2 自动交回根规划者。
+    // 指纹与 root 隔离仍是本用例重点：两个会话各自独立推进，互不熔断。
+    assert.equal(f.calls.length, 6);
   } finally {
     await f.close();
   }

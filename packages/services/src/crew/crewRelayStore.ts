@@ -1,4 +1,4 @@
-import type { CrewExecution, CrewRelay, CrewResolvedMember } from "@zcode/shared";
+import type { CrewExecution, CrewHandoff, CrewRelay, CrewResolvedMember } from "@zcode/shared";
 import { readExecution, type CrewStore } from "./crewStore.js";
 import { crewObjectiveHash, parseCrewHandoff } from "./crewRelayPolicy.js";
 
@@ -28,8 +28,16 @@ export class CrewRelayStore {
       : execution;
   }
   propose(execution: CrewExecution, finalText: string): void {
-    const handoff = parseCrewHandoff(finalText);
-    if (!handoff || execution.relay || execution.status !== "succeeded") return;
+    if (execution.relay || execution.status !== "succeeded") return;
+    // 交接不依赖任何单一格式，三条通道任一成立即派工：
+    //   ① 结构化标签（JSON，容忍多余字段）→ ② 正文里的 @成员名 → ③ 兜底交回根规划者。
+    // 外部 runtime（claude/codex）被 --json-schema 约束，弱模型普遍丢标签或写多余字段；
+    // 链路存续不能押在「模型是否愿意吐出格式完美的 JSON」上。
+    const handoff =
+      parseCrewHandoff(finalText) ??
+      this.mentionHandoff(execution, finalText) ??
+      this.inferHandoff(execution, finalText);
+    if (!handoff) return;
     const targets = this.store
       .group(execution.groupId)
       .members.map((member) => this.store.resolve(member))
@@ -43,6 +51,52 @@ export class CrewRelayStore {
     const saved = this.save(execution, relay);
     const reason = this.reason(saved);
     if (reason) this.block(saved, reason);
+  }
+  /**
+   * 正文 @成员名 通道：不要求任何 JSON，模型只要在回复里提到下一站成员即可。
+   * 名字长的优先（避免「@前端」抢占「@前端 Codex」），同一次回复里取最后一次出现，
+   * 与标签「只认最后一个」的语义一致。排除自己，避免自交。
+   */
+  private mentionHandoff(execution: CrewExecution, finalText: string): CrewHandoff | null {
+    const members = this.store
+      .group(execution.groupId)
+      .members.map((member) => this.store.resolve(member))
+      .filter((member) => member.memberId !== execution.memberId);
+    let best: { index: number; member: CrewResolvedMember } | undefined;
+    for (const member of members) {
+      const index = finalText.lastIndexOf(`@${member.name}`);
+      if (index < 0) continue;
+      // 取「最后被提到」的成员；前缀重叠（@前端 vs @前端 Codex）同位置时取更长的名字。
+      if (
+        !best ||
+        index > best.index ||
+        (index === best.index && member.name.length > best.member.name.length)
+      )
+        best = { index, member };
+    }
+    if (!best) return null;
+    return {
+      to: best.member.name,
+      objective: `接手「${execution.memberSnapshot.name}」的产出（第 ${(execution.hop ?? 0) + 1} 跳）`,
+      context: finalText.slice(-6000) || "(无输出)",
+    };
+  }
+  /**
+   * 三通道都未命中时的兜底交接：hop>=1 的成员完成即交回根规划者。
+   * 根规划者自己无标签时才是真正的链尾（返回 null，链结束）。
+   * objective 带上 hop，让每跳的目标指纹唯一，避免被 relayDuplicate 误熔断；
+   * 真正的循环由既有 hop<=8 上限兜住。
+   */
+  private inferHandoff(execution: CrewExecution, finalText: string): CrewHandoff | null {
+    const hop = execution.hop ?? 0;
+    if (hop === 0) return null;
+    const root = this.chain(execution).find((item) => (item.hop ?? 0) === 0);
+    if (!root || root.memberId === execution.memberId) return null;
+    return {
+      to: root.memberSnapshot.name,
+      objective: `汇总「${execution.memberSnapshot.name}」的产出并决定下一步（任务链第 ${hop} 跳）`,
+      context: finalText.slice(-6000) || "(无输出)",
+    };
   }
   root(execution: CrewExecution): string {
     return execution.rootRequestId ?? execution.messageId;

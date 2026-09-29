@@ -102,7 +102,8 @@ export function buildVendorPrompt(request: ExternalRuntimeTaskRequest): string {
     "Boundaries:",
     ...request.boundaries.map((boundary) => `- ${boundary}`),
     "- Remain a leaf worker. Do not delegate or invoke zcode, claude, codex, or opencode.",
-    "Return only JSON: {summary: string, status: succeeded|failed|cancelled, artifacts: string[]}.",
+    "Finish by describing what you did in plain text. JSON is OPTIONAL: if you can emit it reliably, you may end with {\"summary\": \"...\", \"status\": \"succeeded\"|\"failed\", \"artifacts\": [...]}; otherwise plain prose is fine and is used as-is.",
+    "If another member should continue, mention them by name in your final reply (for example \"@设计师 …\"); that alone hands the task over.",
   ].join("\n");
 }
 
