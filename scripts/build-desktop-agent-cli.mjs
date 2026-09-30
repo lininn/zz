@@ -155,7 +155,7 @@ if (!useTurboBuild) {
   }
 
   await verifyRequiredDevPluginRuntimeArtifacts();
-  runCommand("pnpm", ["--filter", "@zcode/cli", "build:desktop-agent"], {
+  runCommand("pnpm", ["--filter", "./apps/zcode-cli/packages/cli", "build:desktop-agent"], {
     env: pnpmRunEnv,
     stdio: "inherit",
   });
@@ -173,7 +173,7 @@ runCommand(
     "apps/zcode-cli",
     "run",
     "build:desktop-agent",
-    "--filter=@zcode/cli",
+    "--filter=@lininn/zz",
   ],
   {
     env: pnpmRunEnv,

@@ -6,13 +6,13 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
-    "build:sea": "pnpm --filter @zcode/cli build:sea",
+    "build:sea": "pnpm --filter ./packages/cli build:sea",
     "check": "pnpm registry:check && turbo run typecheck",
     "clean": "turbo run clean",
-    "cli:build": "pnpm --filter @zcode/cli build",
-    "cli:dev": "pnpm --filter @zcode/cli dev",
-    "cli:upload-sea": "pnpm --filter @zcode/cli upload:sea",
-    "dev": "pnpm --filter @zcode/cli dev",
+    "cli:build": "pnpm --filter ./packages/cli build",
+    "cli:dev": "pnpm --filter ./packages/cli dev",
+    "cli:upload-sea": "pnpm --filter ./packages/cli upload:sea",
+    "dev": "pnpm --filter ./packages/cli dev",
     "format": "oxfmt --write package.json \"packages/**/*.json\" \"packages/**/*.ts\" \"packages/**/*.mjs\"",
     "format:check": "oxfmt --check package.json \"packages/**/*.json\" \"packages/**/*.ts\" \"packages/**/*.mjs\"",
     "lint": "turbo run lint",
@@ -24,7 +24,7 @@
     "registry:generate": "node scripts/generate-bash-command-registry.mjs",
     "release": "node ../../node_modules/release-it/bin/release-it.js --config .release-it.json",
     "release:dry": "pnpm run release --release-version",
-    "sea": "pnpm --filter @zcode/cli sea",
+    "sea": "pnpm --filter ./packages/cli sea",
     "typecheck": "turbo run typecheck"
   },
   "dependencies": {

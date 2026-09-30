@@ -90,6 +90,9 @@ export const parseGlobalArgs = (argv: string[]) =>
       "web-port": {
         type: "string",
       },
+      web: {
+        type: "boolean",
+      },
 
       // 在全局注册，run.ts 收集后透传给 plugins-command，不污染其他命令的选项语义。
       all: {

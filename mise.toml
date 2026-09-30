@@ -38,4 +38,8 @@ run = "mise exec -- node scripts/mise-run.mjs pnpm lint"
 
 [tasks.zz]
 description = "快捷启动命令行 Agent CLI（开发模式）。"
-run = "mise exec -- node scripts/mise-run.mjs pnpm --filter @zcode/cli dev"
+# 外部 runtime（Codex / Claude CLI）派工需要显式声明宿主的隔离承诺：
+# preflight 是 fail-closed 设计，未声明时所有外部成员探测为 outer_isolation_missing 而不可用。
+# 本地开发机即宿主自身，这里显式声明；生产/共享环境请勿照搬，应按真实隔离情况配置。
+env = { ZCODE_CREW_OUTER_SANDBOX_READY = "1" }
+run = "mise exec -- node scripts/mise-run.mjs pnpm --filter ./apps/zcode-cli/packages/cli dev"

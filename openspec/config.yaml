@@ -1,0 +1,103 @@
+schema: spec-driven
+language:
+  artifacts: zh-CN
+  detection: inferred
+  appliesTo:
+    - proposal
+    - tasks
+    - plan-ready
+    - workflow-status
+    - human-facing summaries
+context: |
+  Purpose:
+    ZCode 是一个 AI 编码助手 CLI 工具，提供终端 TUI、Web 控制台、桌面应用三种交互界面，
+    支持自定义模型 Provider（--web-config），以及手机远程控制 PC（通过 kd1 公网中转 relay）。
+    当前版本 v3.14.3，尚未发布到 npm（npm.publish: false）。
+
+  Tech Stack:
+    - 运行时: Node.js >= 24.0.0，pnpm 10.33.2 包管理器（workspace monorepo）
+    - 语言: TypeScript 6.x，ESM 模块（"type": "module"），target es2024
+    - CLI 构建: esbuild → CJS bundle（dist/zcode.cjs + shebang）
+    - Server 构建: tsup（Hono HTTP/WS 服务器）
+    - Web 构建: Vite（React SPA），开发端口 5173，生产构建输出 packages/web/dist/
+    - Desktop: Electron
+    - TUI: Ink（React 终端 UI）
+    - RPC: 自研二进制协议 @zcode/rpc（基于 VSCode 风格 channel/message）
+    - 前端框架: React 18+，react-dom/client
+    - 测试: mocha（E2E）、oxlint（lint）、tsc --noEmit（typecheck）
+    - 格式化: oxfmt（.oxfmtrc.json）、.prettierignore
+    - 发布: release-it + conventional-changelog（仅 git tag，不发 npm）
+
+  Architecture:
+    - 根目录: zcode pnpm monorepo，workspace 包含 packages/* 和 apps/zcode-cli
+    - apps/zcode-cli/: CLI 主程序，自身也是嵌套 pnpm workspace
+      - packages/cli/: CLI 入口（bin: "zcode"），解析参数 → 路由到 tui/prompt/web-config 等命令
+      - packages/tui/: Ink 终端 UI
+      - packages/core/: 核心逻辑
+      - packages/i18n/: 国际化
+      - packages/bootstrap/: 启动模块
+      - packages/adapters/, contracts/, shared-types/, debug/, ...15+ 子包
+    - packages/server/: Hono HTTP/WS 服务器（默认 :3030，可通过 PORT 环境变量配置）
+      - /ws → RPC WebSocket（connectViaWebSocket）
+      - /ws/host → desktop host 可信通道
+      - /api/server-info → 服务器信息
+      - staticRoot 选项 → 托管 Web 静态文件
+    - packages/web/: React 前端 SPA
+      - bootstrapWebApp() → 同源 WS 连接（resolveDefaultWsOrigin）
+      - Vite dev :5173，proxy /ws + /api → :3030
+      - 生产构建 → packages/web/dist/（托管在 server staticRoot 或 relay web-dist）
+    - packages/zcode-server-cli/: 常驻守护进程（Supervisor），管理 server 生命周期
+      - bin: "zcode"（与 CLI 同名冲突，当前都是 private 无影响）
+      - 命令: serve/status/stop/restart/update/uninstall
+      - SERVER_CLI_PROTOCOL_VERSION = 1（Supervisor ↔ server 之间的控制协议）
+    - packages/rpc/: 二进制 RPC 协议（无 PROTOCOL_VERSION 常量，协议兼容性依赖打包版本一致）
+    - packages/client/: 客户端库，connectViaWebSocket() 建立 RPC 通道
+    - packages/ui/: 共享 UI 组件（WebRelayControlCard、SettingsPage 等）
+    - packages/shared/: 共享工具、version.ts（__ZCODE_VERSION__ 注入）、zcodeEndpoint.ts
+    - packages/provider/: AI Provider 配置体系
+    - zcode-relay/: 独立仓库（/Users/lininn/test/zcode-relay，v0.1.0），Docker 部署在 kd1
+      - relay-server（:8787）: Express + WS，公网中转
+      - connector: PC 端出站 WS 隧道 → 127.0.0.1:3030
+      - web-dist/: 从 packages/web/dist rsync 而来，只读挂载
+
+  Code Style:
+    - oxlint 规则: .oxlintrc.json
+    - oxfmt 格式化: .oxfmtrc.json
+    - ESLint 规则: max-lines 等（源码中有 eslint-disable 注释）
+    - 命名: kebab-case 文件、camelCase 变量/函数、PascalCase 组件/类
+    - 类型: strict TypeScript、verbatimModuleSyntax、isolatedModules
+
+  Testing:
+    - E2E: mocha，在 apps/zcode-cli 和 packages 中有测试
+    - Lint: oxlint src
+    - TypeCheck: tsc --noEmit 或 tsc -b（project references）
+    - 构建验证: pnpm build（递归全量）或 pnpm build:bootstrap（排除 desktop）
+
+  Constraints:
+    - Node.js >= 24.0.0（根 package.json engines）
+    - 不新增不必要依赖；优先用 Node 内置 API（如 parseArgs）
+    - RPC 协议兼容性是 web-dist 与 server 的耦合点——版本必须匹配
+    - pnpm 全局版本锁定 7.4.0（用户记忆）
+    - 发布前必须通过 typecheck + lint + 相关 E2E
+    - 密钥/凭证不硬编码
+
+rules:
+  specs:
+    - 所有新增 CLI 参数必须在 arguments.ts 中注册
+    - CLI bin 名变更需同步更新 process-name.ts、package.json bin、帮助文档
+    - 端口配置必须支持环境变量覆盖和自动回退，不硬编码
+    - web-dist 构建产物路径必须可配置，支持内嵌 npm 包和独立部署两种模式
+  design:
+    - 生产模式不用 Vite dev server；web 页面由 server 内嵌 HTTP + staticRoot 托管
+    - CLI 与 server-cli 的 bin 名不得冲突；发布到 npm 时只发一个主命令
+    - kd1 relay 多版本共存方案：web-dist 按版本分目录，relay 根据客户端版本动态路由
+  tasks:
+    - 任务文档使用中文
+    - 每个任务需有明确的验收条件和验证方式
+  implementation:
+    - 遵循现有代码风格和目录约定
+    - 新增文件需通过 typecheck + lint
+    - CLI 参数解析用 Node 内置 parseArgs，不引入 Commander 等新依赖
+  artifacts:
+    - Follow language.artifacts for human-facing OpenFlow outputs.
+    - Parser-required OpenSpec headings, CLI commands, code identifiers, and protocol keywords must remain in their required original form.

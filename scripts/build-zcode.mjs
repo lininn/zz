@@ -145,7 +145,7 @@ async function buildOutputs(skipBuild) {
     return;
   }
 
-  run("pnpm", ["--filter", "@zcode/cli...", "build"]);
+  run("pnpm", ["--filter", "./apps/zcode-cli/packages/cli...", "build"]);
   await rm(resolve(root, "packages", "server", "dist"), {
     force: true,
     recursive: true,

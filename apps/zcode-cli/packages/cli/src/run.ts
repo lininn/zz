@@ -438,6 +438,14 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
     });
   }
 
+  // zz --web：启动本地 Web 聊天页面（内嵌 server + web-dist 托管）。
+  if (parsed.values["web"] === true) {
+    const { runWebCommand, resolveWebPort } = await import("./web-command.js");
+    return await runWebCommand(ctx, {
+      port: resolveWebPort(parsed.values["web-port"] as string | undefined),
+    });
+  }
+
   if (
     options.enableWorkflow &&
     (parsed.positionals.length > 0 ||
