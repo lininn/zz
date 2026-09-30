@@ -88,30 +88,31 @@ test("availability matches member and runtime, not shared provider identity", ()
   assert.equal(crewRuntimeAvailability({ ...member, runtime: "zcode" }).available, true);
 });
 
-test("external dispatch requires a positive matching probe; board-only posts remain possible", () => {
+test("external dispatch is not blocked by runtime probes; unknown members still fail closed", () => {
   const draft = { ...newCrewDraft(), text: "Review", memberId: member.memberId };
   const available = [
     { memberId: member.memberId, runtimeId: "claude-cli" as const, available: true },
   ];
-  assert.equal(crewSendParams("crew-a", "conversation-a", draft, [member]), null);
-  assert.equal(
-    crewSendParams(
-      "crew-a",
-      "conversation-a",
-      draft,
-      [member],
-      [{ ...available[0]!, available: false }],
-    ),
-    null,
-  );
-  assert.deepEqual(
-    crewSendParams("crew-a", "conversation-a", draft, [member], available)?.mentions,
-    [member.memberId],
-  );
+  const unavailable = [{ ...available[0]!, available: false, reason: "Binary not found" }];
+  // 探测状态只用于展示：缺探测、探测可用、探测不可用都应照常派工，
+  // 成败由执行边界判定，侧栏红色状态不能反过来拦住用户的明确指派。
+  for (const probes of [undefined, available, unavailable]) {
+    assert.deepEqual(
+      crewSendParams("crew-a", "conversation-a", draft, [member], probes)?.mentions,
+      [member.memberId],
+    );
+  }
+  // 未选成员 = 仅发群板，不产生结构化派工。
   assert.deepEqual(
     crewSendParams("crew-a", "conversation-a", { ...draft, memberId: null }, [member])?.mentions,
     [],
   );
+  // 护栏仍在：memberId 不在已解析成员里必须拒绝，正文里的 @ 不能变成派工。
+  assert.equal(
+    crewSendParams("crew-a", "conversation-a", { ...draft, memberId: "not-a-member" }, [member]),
+    null,
+  );
+  assert.equal(crewSendParams("crew-a", "conversation-a", { ...draft, text: "   " }, [member]), null);
   assert.equal(member.runtime, "claude-cli");
 });
 

@@ -341,7 +341,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           <DropdownMenuItem
             key={itemKey}
             {...commonProps}
-            className="min-h-8 cursor-not-allowed gap-2 px-2 text-ui-base text-foreground-subtlest data-[highlighted]:text-foreground-subtlest"
+            className="min-h-9 cursor-not-allowed gap-2 px-2 text-ui-base text-foreground-subtlest data-[highlighted]:text-foreground-subtlest"
             onSelect={(event) => event.preventDefault()}
           >
             {content}
@@ -354,7 +354,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           key={itemKey}
           {...commonProps}
           value={item.value}
-          className="min-h-8 gap-2 pl-2 pr-8 text-ui-base"
+          className="min-h-9 gap-2 pl-2.5 pr-8 text-ui-base"
           onSelect={() => {
             handleModelValueChange(item.value);
             handlePopoverOpenChange(false);
@@ -543,8 +543,8 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
         <DropdownMenuContent
           className={cn(
             shouldShowProviderLevel
-              ? "w-max min-w-48 max-w-[calc(100vw-2rem)]"
-              : "w-48 max-h-72 overflow-y-auto",
+              ? "w-max min-w-52 max-w-[calc(100vw-2rem)]"
+              : "w-52 max-h-72 overflow-y-auto",
           )}
           align={contentAlign}
           side={contentSide}
@@ -588,7 +588,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
                       {groupSeparator}
                       <div>
                         <DropdownMenuLabel
-                          className="flex min-h-8 items-center px-2 py-1"
+                          className="flex min-h-8 items-center gap-1.5 px-2 py-1.5 text-ui-sm font-medium text-foreground-subtlest"
                           data-testid={testId(TID_CHAT_MODEL_SELECT_GROUP, group.key)}
                           data-model-provider-key={group.key}
                         >
@@ -609,7 +609,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
                     {groupSeparator}
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger
-                        className="min-h-8"
+                        className="min-h-9 font-medium"
                         data-testid={testId(TID_CHAT_MODEL_SELECT_GROUP, group.key)}
                         data-model-provider-key={group.key}
                         data-model-provider-selected={groupSelected ? "true" : undefined}
@@ -624,7 +624,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
                           "max-h-72 overflow-y-auto",
                           // 固定宽度会提前截断模型名；按内容扩展，并让可用空间优先于最小宽度。
                           providerSubmenuClassName ??
-                            "w-max min-w-[min(12rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width)",
+                            "w-max min-w-[min(13rem,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width)",
                         )}
                       >
                         {renderModelItems(group.items)}
@@ -642,7 +642,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
               {renderedFooterActions.map((action) => (
                 <DropdownMenuItem
                   key={action.key}
-                  className="min-h-8 gap-2 px-2"
+                  className="min-h-9 gap-2 px-2"
                   data-model-footer-action={action.key}
                   data-model-footer-action-selected={action.selected ? "true" : undefined}
                   onSelect={() => {

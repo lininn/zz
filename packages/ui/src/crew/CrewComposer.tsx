@@ -85,19 +85,20 @@ export function CrewComposer({
               {t("chooseMember")}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-0">
+          <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] p-0">
             <Command>
               <CommandInput
                 placeholder={t("searchMembers")}
                 aria-label={t("searchMembers")}
                 className="text-mobile-input-safe md:text-ui-base"
               />
-              <CommandList aria-label={t("chooseMember")}>
+              <CommandList aria-label={t("chooseMember")} className="p-1">
                 <CommandEmpty>{t("noMembersFound")}</CommandEmpty>
                 {candidates.map((item) => {
                   const member = resolvedMembers.find(
                     (candidate) => candidate.memberId === item.value,
                   );
+                  const label = item.displayLabel ?? item.label;
                   return (
                     <CommandItem
                       key={item.id}
@@ -107,19 +108,30 @@ export function CrewComposer({
                         setDraft((current) => editCrewDraft(current, { memberId: item.value }));
                         setPickerOpen(false);
                       }}
+                      className="items-start gap-2.5 rounded-lg px-2.5 py-2"
                     >
-                      <div className="min-w-0 space-y-1">
-                        <p className="break-words text-ui-base">
-                          {item.displayLabel ?? item.label}
-                        </p>
-                        <p className="line-clamp-2 break-words text-ui-caption text-muted-foreground">
+                      {/* 首字母头像：给每行一个视觉锚点，替代原先裸露的成员 ID。 */}
+                      <span
+                        aria-hidden="true"
+                        className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full bg-surface text-ui-xs font-medium text-foreground-subtle"
+                      >
+                        {label.slice(0, 1)}
+                      </span>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <p className="min-w-0 truncate text-ui-base font-medium text-foreground">
+                            {label}
+                          </p>
+                          {member && (
+                            <CrewRuntimeStatus
+                              member={member}
+                              availability={runtimeAvailability}
+                              variant="compact"
+                            />
+                          )}
+                        </div>
+                        <p className="line-clamp-2 break-words text-ui-caption text-foreground-subtle">
                           {item.description}
-                        </p>
-                        {member && (
-                          <CrewRuntimeStatus member={member} availability={runtimeAvailability} />
-                        )}
-                        <p className="truncate font-mono text-ui-xs text-muted-foreground">
-                          {item.value}
                         </p>
                       </div>
                     </CommandItem>

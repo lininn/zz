@@ -691,11 +691,11 @@ export function PermissionDialog({
   const shouldUseSaveWorkflowBlock = blockKind === "saveWorkflow";
   return (
     <div className="w-full shrink-0 relative z-1">
-      <div className="w-full overflow-hidden rounded-2xl border border-border bg-popover shadow-xs">
+      <div className="w-full overflow-hidden rounded-2xl border border-popover-border bg-popover shadow-md">
         <div className="flex flex-col gap-3 p-3">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-ui-base font-medium leading-tight text-foreground-subtle">
+              <p className="text-ui-base font-semibold leading-tight text-foreground">
                 {intl.formatMessage({ id: "chat.permission.title" })}
               </p>
               <InteractionRequestOriginBadge origin={request.origin} />
@@ -727,12 +727,12 @@ export function PermissionDialog({
             )}
           </div>
 
-          {/* 反馈行曾被外层 gap-3 隔开；用同一 4px 视觉分组，保留 listbox 的权限选项边界。 */}
+          {/* 选项组用浅底容器收拢，选中项做成「抬起的卡片」；反馈行沿用同一视觉语言。 */}
           <div className="space-y-1">
             <div
               role="listbox"
               aria-label={intl.formatMessage({ id: "chat.permission.title" })}
-              className="space-y-1"
+              className="space-y-1.5 rounded-xl border border-border/70 bg-surface/50 p-1.5"
             >
               {orderedOptions.map((option, index) => {
                 const isSelected = index === selectedIndex;
@@ -798,8 +798,10 @@ export function PermissionDialog({
                     onFocus={() => setSelectedIndex(index)}
                     onKeyDown={handleOptionKeyDown}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left outline-none transition-colors focus-visible:bg-selected",
-                      isSelected ? "bg-selected" : "hover:bg-hover",
+                      "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-[background-color,box-shadow]",
+                      isSelected
+                        ? "bg-background shadow-xs ring-1 ring-border"
+                        : "hover:bg-surface-hover",
                     )}
                   >
                     <span
@@ -835,8 +837,10 @@ export function PermissionDialog({
                   }
                 }}
                 className={cn(
-                  "flex w-full cursor-text items-center gap-3 rounded-xl px-3 py-2 transition-colors",
-                  isFeedbackSelected ? "bg-selected" : "hover:bg-hover",
+                  "flex w-full cursor-text items-center gap-3 rounded-lg px-2.5 py-2 transition-[background-color,box-shadow]",
+                  isFeedbackSelected
+                    ? "bg-background shadow-xs ring-1 ring-border"
+                    : "hover:bg-surface-hover",
                 )}
               >
                 <span
@@ -897,7 +901,7 @@ export function PermissionDialog({
               {responseError}
             </p>
           ) : null}
-          <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-3 px-1">
             <p className="flex gap-2 text-ui-base items-center text-foreground-subtle">
               <Info className="text-foreground size-4 shrink-0" />
               {intl.formatMessage({ id: "chat.permission.keyboardHint" })}

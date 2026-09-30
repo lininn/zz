@@ -40,20 +40,23 @@ export function CrewRelayCard({
   };
   return (
     <section
-      className={`min-w-0 space-y-2 rounded-xl border p-3 ${plan ? "border-interaction-confirmation-foreground/30 bg-interaction-confirmation-surface" : "border-border bg-surface"}`}
+      className={`min-w-0 space-y-3 rounded-xl border p-3 shadow-xs ${plan ? "border-interaction-confirmation-foreground/30 bg-interaction-confirmation-surface" : "border-border bg-surface"}`}
       data-testid={plan ? "crew-relay-plan" : "crew-relay-card"}
       data-execution-id={execution.executionId}
       data-relay-status={relay.status}
       aria-label={t(plan ? "relay.planTitle" : "relay.handoffTitle")}
     >
-      <header className="flex min-w-0 flex-wrap items-center gap-2 text-ui-caption">
-        <span className="text-muted-foreground">{t("home.system")}</span>
-        <h4 className="text-ui-base font-semibold">
+      <header className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border/60 pb-2">
+        <span className="text-ui-caption text-foreground-subtlest">{t("home.system")}</span>
+        <h4 className="text-ui-base font-semibold text-foreground">
           {t(plan ? "relay.planTitle" : "relay.handoffTitle")}
         </h4>
         <Badge variant="secondary">{t(`relay.status.${relay.status}`)}</Badge>
       </header>
-      <p className="break-words text-ui-caption" data-testid="crew-relay-route">
+      <p
+        className="break-words text-ui-base font-medium text-foreground"
+        data-testid="crew-relay-route"
+      >
         {t("relay.route", { from: execution.memberSnapshot.name, to: relay.to })}
         {relay.status === "dispatched" && relay.automatic && (
           <Badge className="ml-2" variant="secondary" data-testid="crew-relay-automatic">
@@ -66,33 +69,39 @@ export function CrewRelayCard({
           {summary}
         </p>
       )}
-      <dl className="min-w-0 space-y-1 text-ui-caption">
-        <dt className="font-medium">{t("relay.objective")}</dt>
-        <dd className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-          {relay.objective}
-        </dd>
+      <dl className="min-w-0 space-y-2">
+        <div className="space-y-1">
+          <dt className="text-ui-caption font-medium text-foreground-subtle">
+            {t("relay.objective")}
+          </dt>
+          <dd className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-background/60 p-2 text-ui-base [overflow-wrap:anywhere]">
+            {relay.objective}
+          </dd>
+        </div>
         {relay.context && (
-          <>
-            <dt className="font-medium">{t("relay.context")}</dt>
-            <dd className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground [overflow-wrap:anywhere]">
+          <div className="space-y-1">
+            <dt className="text-ui-caption font-medium text-foreground-subtle">
+              {t("relay.context")}
+            </dt>
+            <dd className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-background/60 p-2 text-ui-caption text-foreground-subtle [overflow-wrap:anywhere]">
               {relay.context}
             </dd>
-          </>
+          </div>
         )}
       </dl>
       {relay.reason && (
         <p
           role="status"
-          className="text-ui-caption text-muted-foreground"
+          className="text-ui-caption text-foreground-subtle"
           data-testid="crew-relay-reason"
         >
           {t(crewErrorKey(`crew.${relay.reason}`))}
         </p>
       )}
       {waiting && (
-        <div className="space-y-2">
+        <div className="space-y-2 border-t border-border/60 pt-3">
           {approveDisabled && !pending && onRespond && (
-            <p className="text-ui-caption text-muted-foreground">{t("relay.approvalBlocked")}</p>
+            <p className="text-ui-caption text-foreground-subtle">{t("relay.approvalBlocked")}</p>
           )}
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" disabled={approveDisabled} onClick={() => decide(true)}>

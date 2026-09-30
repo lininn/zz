@@ -49,7 +49,7 @@ export function CrewSidebar({
       className="flex min-h-0 min-w-0 flex-1 flex-col text-foreground"
     >
       <header className="flex min-w-0 items-center justify-between gap-2 px-2 py-1">
-        <h2 className="truncate text-ui-base font-medium">{t("home.sidebarTitle")}</h2>
+        <h2 className="truncate text-ui-base font-semibold">{t("home.sidebarTitle")}</h2>
         {onManage && (
           <Button
             type="button"
@@ -71,7 +71,7 @@ export function CrewSidebar({
             <p className="text-ui-sm text-foreground-subtle">{t("emptyDescription")}</p>
           </div>
         )}
-        <ul className="min-w-0 space-y-3">
+        <ul className="min-w-0 space-y-4">
           {buckets.map((bucket) => (
             <li
               key={JSON.stringify(bucket.key)}
@@ -79,24 +79,24 @@ export function CrewSidebar({
               data-workspace-key={bucket.key ?? undefined}
             >
               <div
-                className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-ui-sm text-foreground-subtle"
+                className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-ui-xs font-semibold uppercase tracking-wider text-foreground-subtlest"
                 title={bucket.workspacePath ? `${bucket.workspacePath}\n${bucket.key}` : undefined}
               >
                 {bucket.workspacePath ? (
-                  <Folder aria-hidden="true" className="size-3.5 shrink-0" />
+                  <Folder aria-hidden="true" className="size-3 shrink-0" />
                 ) : (
-                  <Users aria-hidden="true" className="size-3.5 shrink-0" />
+                  <Users aria-hidden="true" className="size-3 shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-medium">
+                  <h3 className="truncate">
                     {bucket.workspacePath ?? t("home.unbound")}
                   </h3>
                   {bucket.key !== null && bucket.key !== bucket.workspacePath && (
-                    <p className="truncate text-ui-xs">{bucket.key}</p>
+                    <p className="truncate text-ui-xs text-foreground-subtlest">{bucket.key}</p>
                   )}
                 </div>
               </div>
-              <ul className="min-w-0 space-y-0.5">
+              <ul className="min-w-0 space-y-0.5 py-0.5">
                 {bucket.groups.map((group) => (
                   <CrewSidebarGroup
                     key={group.groupId}

@@ -7,6 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import * as presentation from "./crewChatPresentation.js";
 import * as errors from "./crewErrors.js";
 import { avatarColor } from "../components/workflow-timeline/WorkflowAgentFace.js";
+// harness 是白名单式桩：组件每引入一个外部依赖都要在这里登记，否则抛 Unexpected component dependency。
+import { cn } from "../components/lib/utils.js";
 import { chatDetail, chatExecution, chatMessage } from "./crewChatFixtures.js";
 import { crewComponentHarness, crewElementNodes, type ChatElement } from "./crewChatHarness.js";
 
@@ -20,6 +22,7 @@ const baseImports = {
   "@/hooks/useCrewText.js": { useCrewText: () => text },
   "@/components/ui/button.js": { Button: "button" },
   "@/components/workflow-timeline/WorkflowAgentFace.js": { avatarColor },
+  "@/components/lib/utils.js": { cn },
   "lucide-react": {
     ChevronDown: "i",
     ChevronRight: "i",

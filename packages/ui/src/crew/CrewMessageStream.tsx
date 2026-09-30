@@ -8,6 +8,7 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation.js";
 import { avatarColor } from "@/components/workflow-timeline/WorkflowAgentFace.js";
+import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { useCrewText } from "@/hooks/useCrewText.js";
 import type { CrewRelayResponse } from "./CrewRelayCard.js";
@@ -36,23 +37,32 @@ function CrewMessageBody({ item, senderName }: { item: CrewChatMessage; senderNa
     <div className="min-w-0 space-y-2" data-message-id={message.messageId}>
       {mentions.length > 0 && (
         <div
-          className="flex flex-wrap items-center gap-1 text-ui-caption"
+          className="flex flex-wrap items-center gap-1.5 text-ui-caption"
           data-testid="crew-handoff"
         >
-          <span className="min-w-0 break-words text-muted-foreground">{senderName}</span>
-          <ArrowRight className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-          {mentions.map((mention) => (
-            <span
-              key={mention.memberId}
-              className="min-w-0 break-words rounded-md border border-border bg-selected px-1.5 py-0.5 font-medium"
-              aria-label={t("home.handoff", {
-                from: senderName,
-                to: mention.name ?? t("formerMember"),
-              })}
-            >
-              @{mention.name ?? t("formerMember")}
-            </span>
-          ))}
+          <span className="min-w-0 break-words font-medium text-foreground-subtle">
+            {senderName}
+          </span>
+          <ArrowRight className="size-3.5 shrink-0 text-foreground-subtlest" aria-hidden="true" />
+          {mentions.map((mention) => {
+            const mentionName = mention.name ?? t("formerMember");
+            const color = avatarColor(mention.memberId);
+            return (
+              <span
+                key={mention.memberId}
+                className="inline-flex min-w-0 items-center gap-1 rounded-full px-2 py-0.5 font-medium"
+                style={{ backgroundColor: `${color}1f`, color }}
+                aria-label={t("home.handoff", { from: senderName, to: mentionName })}
+              >
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="min-w-0 break-words">@{mentionName}</span>
+              </span>
+            );
+          })}
         </div>
       )}
       <p
@@ -131,6 +141,9 @@ export function CrewMessageStream({
             : system
               ? t("home.system")
               : (entry.sender.name ?? t("formerMember"));
+          // 身份色同时用于头像底色与成员名，让同一成员在长流里能被一眼扫到。
+          const identityColor =
+            user || system ? null : avatarColor(entry.sender.memberId ?? name);
           return (
             <article
               key={entry.key}
@@ -139,29 +152,41 @@ export function CrewMessageStream({
               data-sender={entry.sender.memberId ?? entry.sender.kind}
             >
               <div
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-ui-caption font-semibold"
-                style={
-                  user || system
-                    ? undefined
-                    : { borderColor: avatarColor(entry.sender.memberId ?? name) }
-                }
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-full text-ui-caption font-semibold",
+                  user || system ? "bg-surface text-foreground-subtle" : undefined,
+                )}
+                style={identityColor ? { backgroundColor: `${identityColor}1f`, color: identityColor } : undefined}
                 aria-hidden="true"
               >
                 {user ? (
-                  <UserRound className="size-4 text-muted-foreground" />
+                  <UserRound className="size-4" />
                 ) : system ? (
-                  <ArrowRight className="size-4 text-muted-foreground" />
+                  <ArrowRight className="size-4" />
                 ) : (
-                  <span style={{ color: avatarColor(entry.sender.memberId ?? name) }}>
-                    {Array.from(name)[0]}
-                  </span>
+                  <span>{Array.from(name)[0]}</span>
                 )}
               </div>
               <div className="min-w-0 flex-1 space-y-2">
-                <header className="min-w-0 break-words text-ui-caption font-semibold">
+                <header
+                  className={cn(
+                    "min-w-0 break-words text-ui-base font-medium",
+                    system ? "text-foreground-subtle" : "text-foreground",
+                  )}
+                >
                   {name}
                 </header>
-                <div className={user ? "space-y-3 rounded-xl bg-secondary px-3 py-2" : "space-y-3"}>
+                <div
+                  className={cn(
+                    "space-y-3 px-3.5 py-2.5",
+                    user
+                      ? "rounded-2xl rounded-tr-sm bg-secondary"
+                      : system
+                        ? // 系统消息是协议/接力派工，不是人说的话：虚线边界把它和成员发言分开。
+                          "rounded-2xl rounded-tl-sm border border-dashed border-border"
+                        : "rounded-2xl rounded-tl-sm border border-border/60 bg-surface/50",
+                  )}
+                >
                   {entry.messages.map((item) => (
                     <CrewMessageBody key={item.message.messageId} item={item} senderName={name} />
                   ))}

@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
-import { ChevronRight, MessageSquare, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare, Trash2, Users } from "lucide-react";
 import type { CrewConversation, CrewGroup } from "@zcode/shared";
+import { cn } from "@/components/lib/utils.js";
 import { useCrew } from "@/hooks/useCrew.js";
 import { useCrewText } from "@/hooks/useCrewText.js";
 import { Button } from "@/components/ui/button.js";
@@ -49,18 +50,34 @@ export function CrewSidebarGroup({
   const conversations = crewSidebarConversations(crew.conversations, group.groupId);
   return (
     <li className="min-w-0" data-crew-group-id={group.groupId}>
-      <div className="flex min-w-0 items-center gap-1">
+      <div className="group/crew-item flex min-w-0 items-center gap-0.5">
+        {/* 左侧彩色标记条 — 展开/选中态高亮 */}
+        <div
+          className={cn(
+            "w-1 shrink-0 self-stretch rounded-full transition-colors duration-150",
+            selected
+              ? "bg-foreground"
+              : expanded
+                ? "bg-foreground-subtle"
+                : "bg-transparent",
+          )}
+        />
         <button
           type="button"
           aria-expanded={expanded}
           aria-controls={contentId}
           onClick={() => setExpanded((value) => !value)}
-          className="flex min-h-9 min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 text-left text-ui-base hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7"
+          className={cn(
+            // 移动端保留 min-h-9 触摸目标，桌面用 sm: 收紧；层级对比靠 sm: 段的差值表达。
+            "flex min-h-9 min-w-0 flex-1 items-center gap-1 rounded-md px-1.5 text-left text-ui-base font-medium transition-[background-color,color] hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7",
+            selected && "bg-selected font-medium",
+          )}
         >
-          <ChevronRight
-            aria-hidden="true"
-            className={`size-3 shrink-0 ${expanded ? "rotate-90" : ""}`}
-          />
+          {expanded ? (
+            <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-foreground-subtle" />
+          ) : (
+            <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-foreground-subtle" />
+          )}
           <Users aria-hidden="true" className="size-4 shrink-0 text-foreground-subtle" />
           <span className="min-w-0 flex-1 truncate" title={group.name}>
             {group.name}
@@ -101,11 +118,13 @@ export function CrewSidebarGroup({
       <ul
         id={contentId}
         hidden={!expanded}
-        className="ml-4 min-w-0 space-y-0.5 border-l border-border pl-1"
+        className="ml-4 min-w-0 space-y-0.5 rounded-r-md border-l-2 border-foreground-subtle/70 bg-foreground/[0.035] pl-2.5 py-1"
       >
         {expanded &&
           conversations.map((conversation) => {
             const title = crewConversationTitle(conversation, conversations, t);
+            const isConversationSelected =
+              selected && selectedConversationId === conversation.conversationId;
             return (
               <li key={conversation.conversationId} className="min-w-0">
                 <div className="group/conversation relative flex min-w-0 items-center">
@@ -118,11 +137,19 @@ export function CrewSidebarGroup({
                         : undefined
                     }
                     onClick={() => onSelect(group.groupId, conversation.conversationId)}
-                    className={`flex min-h-9 w-full min-w-0 items-center gap-1.5 rounded-lg px-2 text-left text-ui-base hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-7 ${selected && selectedConversationId === conversation.conversationId ? "bg-selected" : ""}`}
+                    className={cn(
+                      "flex min-h-9 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-left text-ui-sm transition-[background-color,color] hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-6",
+                      isConversationSelected
+                        ? "bg-selected text-foreground font-medium"
+                        : "text-foreground-subtle hover:text-foreground",
+                    )}
                   >
                     <MessageSquare
                       aria-hidden="true"
-                      className="size-3 shrink-0 text-foreground-subtle"
+                      className={cn(
+                        "size-3.5 shrink-0",
+                        isConversationSelected ? "text-foreground" : "text-foreground-subtlest",
+                      )}
                     />
                     <span className="min-w-0 flex-1 truncate" title={title}>
                       {title}
@@ -154,7 +181,7 @@ export function CrewSidebarGroup({
           !crew.readError &&
           !crew.unavailable &&
           conversations.length === 0 && (
-            <li className="px-2 py-1 text-ui-sm text-foreground-subtle">
+            <li className="px-2 py-1 text-ui-sm text-foreground-subtlest">
               {t("home.emptyConversations")}
             </li>
           )}

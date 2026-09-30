@@ -93,6 +93,8 @@ const enUS: Record<string, string> = {
   "crew.runtimeVersion": "Version: {version}",
   "crew.runtimeAvailable": "Available",
   "crew.runtimeUnavailable": "Unavailable — no ZCode fallback.",
+  // The compact badge cannot fit the full sentence: keep only "Unavailable"; the reason moves to title / the card.
+  "crew.runtimeUnavailableShort": "Unavailable",
   "crew.runtimeUnchecked": "Availability is not verified. Bind a workspace or refresh to check.",
   "crew.permissionTitle": "Permission request from {name}",
   "crew.permissionApprove": "Approve",

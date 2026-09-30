@@ -48,26 +48,27 @@ export function CrewChatView({
           }}
         />
         <ul className="flex max-h-24 flex-wrap gap-2 overflow-y-auto" aria-label={t("members")}>
-          {detail.resolvedMembers.map((member) => (
-            <li key={member.memberId} className="min-w-0">
-              <details className="group min-w-0 rounded-lg bg-surface px-2 py-1">
-                <summary className="flex min-w-0 cursor-pointer list-none items-center gap-1.5 text-ui-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <span
-                    className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border text-ui-xs font-semibold"
-                    style={{
-                      color: avatarColor(member.memberId),
-                      borderColor: avatarColor(member.memberId),
-                    }}
-                    aria-hidden="true"
-                  >
-                    {Array.from(member.name)[0]}
-                  </span>
-                  <span className="min-w-0 break-words">{member.name}</span>
-                </summary>
-                <CrewRuntimeStatus member={member} availability={detail.runtimeAvailability} />
-              </details>
-            </li>
-          ))}
+          {detail.resolvedMembers.map((member) => {
+            const color = avatarColor(member.memberId);
+            return (
+              <li key={member.memberId} className="min-w-0">
+                <details className="group min-w-0 rounded-lg bg-surface px-2 py-1">
+                  <summary className="flex min-w-0 cursor-pointer list-none items-center gap-1.5 text-ui-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    {/* 与消息流里的头像同一套身份色，避免同一成员在两处换色。 */}
+                    <span
+                      className="flex size-5 shrink-0 items-center justify-center rounded-full text-ui-xs font-semibold"
+                      style={{ backgroundColor: `${color}1f`, color }}
+                      aria-hidden="true"
+                    >
+                      {Array.from(member.name)[0]}
+                    </span>
+                    <span className="min-w-0 break-words">{member.name}</span>
+                  </summary>
+                  <CrewRuntimeStatus member={member} availability={detail.runtimeAvailability} />
+                </details>
+              </li>
+            );
+          })}
         </ul>
       </header>
       {(conversation.status === "active" || conversation.status === "recovery_required") && (

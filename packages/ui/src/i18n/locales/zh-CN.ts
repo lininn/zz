@@ -80,6 +80,8 @@ const zhCN: Record<string, string> = {
   "crew.runtimeVersion": "版本：{version}",
   "crew.runtimeAvailable": "可用",
   "crew.runtimeUnavailable": "不可用，不会降级到 ZCode。",
+  // compact 徽标放不下完整句：只保留「不可用」，原因走 title / 卡片。
+  "crew.runtimeUnavailableShort": "不可用",
   "crew.runtimeUnchecked": "尚未验证可用性，请绑定工作目录或刷新后检查。",
   "crew.permissionTitle": "{name} 的权限请求",
   "crew.permissionApprove": "批准",
