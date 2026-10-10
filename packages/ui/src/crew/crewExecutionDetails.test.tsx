@@ -9,6 +9,7 @@ import ts from "typescript";
 import type { CrewExecution, CrewExecutionDetail } from "@zcode/shared";
 import { ZCodeIntlProvider } from "../i18n/IntlProvider.js";
 import { useCrewText } from "../hooks/useCrewText.js";
+import * as presentation from "./crewChatPresentation.js";
 
 const execution: CrewExecution = {
   executionId: "run",
@@ -53,6 +54,8 @@ runInNewContext(
       if (name.endsWith("useCrewExecutionDetail.js"))
         return { useCrewExecutionDetail: () => ({ ...result, mutate: async () => {} }) };
       if (name.endsWith("button.js")) return { Button: "button" };
+      // 纯展示逻辑用真实实现，避免桩与产出的截断行为漂移。
+      if (name.endsWith("crewChatPresentation.js")) return presentation;
       // 外部详情不得初始化 V4/Host；任何错误分支穿透都让测试失败。
       return new Proxy(
         {},
@@ -74,7 +77,7 @@ function html() {
   );
 }
 
-test("external summary is real text alongside an explicit unavailable-process reason", () => {
+test("external summary leads as the member output, with the process note kept below it", () => {
   result = {
     data: {
       execution,
@@ -89,10 +92,15 @@ test("external summary is real text alongside an explicit unavailable-process re
     },
   };
   const rendered = html();
-  assert.match(rendered, /Detailed process unavailable/);
+  const outputAt = rendered.indexOf("&lt;script&gt;untrusted&lt;/script&gt;");
+  const noticeAt = rendered.indexOf("Detailed process unavailable");
+  // 产出是该成员这一轮的正文，必须排在「过程不可用」说明之前——
+  // 否则用户看到的第一句是诊断，而不是 agent 交付了什么。
+  assert.ok(outputAt >= 0, "runtime summary must render as real text");
+  assert.ok(noticeAt > outputAt, "the honest process note stays, but after the output");
   assert.match(rendered, /does not expose step-by-step events/);
-  assert.match(rendered, /Summary returned by the runtime/);
-  assert.match(rendered, /&lt;script&gt;untrusted&lt;\/script&gt;/);
+  // 正文不再挂在「运行时返回的摘要」这类诊断标签下。
+  assert.doesNotMatch(rendered, /Summary returned by the runtime/);
   assert.doesNotMatch(rendered, /<script>/);
 });
 

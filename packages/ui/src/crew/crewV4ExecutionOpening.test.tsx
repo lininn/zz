@@ -9,6 +9,7 @@ import ts from "typescript";
 import { ZCodeIntlProvider } from "../i18n/IntlProvider.js";
 import { useCrewText } from "../hooks/useCrewText.js";
 import { chatExecution } from "./crewChatFixtures.js";
+import * as presentation from "./crewChatPresentation.js";
 
 // 渲染真实分支，只替换只读投影/懒加载子视图，禁止借展开触发 runtime。
 let connected = true;
@@ -56,6 +57,8 @@ runInNewContext(
           },
         };
       if (name.endsWith("button.js")) return { Button: "button" };
+      // 纯展示逻辑用真实实现，避免桩与产出的截断行为漂移。
+      if (name.endsWith("crewChatPresentation.js")) return presentation;
       throw new Error(`Unexpected execution dependency: ${name}`);
     },
   },

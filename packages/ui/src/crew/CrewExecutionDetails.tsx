@@ -1,11 +1,12 @@
-import { lazy, Suspense } from "react";
-import type { CrewExecution } from "@zcode/shared";
+import { lazy, Suspense, useState } from "react";
+import type { CrewExecution, CrewExecutionDetail } from "@zcode/shared";
 import { useCrewText } from "@/hooks/useCrewText.js";
 import { useCrewExecutionDetail } from "@/hooks/useCrewExecutionDetail.js";
 import { useCrewTaskTimeline } from "@/hooks/useCrewTaskTimeline.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { Button } from "@/components/ui/button.js";
+import { crewReplyPreview } from "./crewChatPresentation.js";
 
 const Timeline = lazy(() =>
   import("@/v4/ConversationShareReadonlyTimeline.js").then((module) => ({
@@ -33,21 +34,56 @@ export function CrewExecutionDetails({ execution }: { execution: CrewExecution }
     );
   if (data.execution.memberSnapshot.runtime === "zcode" && data.execution.taskId)
     return <CrewV4Execution key={data.execution.taskId} execution={data.execution} />;
+  return <CrewExternalExecution detail={data} />;
+}
+
+/**
+ * 外部运行时（Codex / Claude CLI）的产出。
+ * 后端只在 task.completed 里给内容，所以这里能展示的是**已完成**的产出；
+ * 运行中由上游回合头表达「工作中」，不会走到这里。
+ */
+function CrewExternalExecution({ detail }: { detail: CrewExecutionDetail }) {
+  const t = useCrewText();
+  const [expanded, setExpanded] = useState(false);
+  const task = detail.runtimeTask;
+  // 失败时 reason 才是用户要看的那句话；有 summary 时它优先。
+  const output = task?.summary?.trim() || task?.reason?.trim() || "";
+  const preview = crewReplyPreview(output);
+  const reason = detail.unavailableReason ?? "externalEventsUnavailable";
   return (
-    <div className="space-y-3 p-3 text-ui-caption" data-testid="crew-external-detail">
-      <Unavailable reason={data.unavailableReason ?? "externalEventsUnavailable"} />
-      {data.runtimeTask && (
+    <div className="space-y-2 p-3" data-testid="crew-external-detail">
+      {output ? (
+        // 产出在前：这是该成员这一轮的正文，不该被「过程不可用」的说明盖住。
         <>
-          <p>{t("home.runtimeState", { state: data.runtimeTask.runtimeState })}</p>
-          {data.runtimeTask.reason && <p className="break-words">{data.runtimeTask.reason}</p>}
-          {data.runtimeTask.summary && (
-            <section aria-label={t("home.executionSummary")}>
-              <h5 className="font-medium">{t("home.executionSummary")}</h5>
-              <p className="whitespace-pre-wrap break-words">{data.runtimeTask.summary}</p>
-            </section>
-          )}
+          <p
+            className="whitespace-pre-wrap break-words text-ui-base [overflow-wrap:anywhere]"
+            data-testid="crew-external-output"
+          >
+            {preview !== null && !expanded ? preview : output}
+          </p>
+          {preview !== null ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-auto px-1 py-1 text-ui-caption text-foreground-subtle"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {t(expanded ? "home.collapseReply" : "home.expandReply")}
+            </Button>
+          ) : null}
         </>
-      )}
+      ) : null}
+      {/* 诚实说明放在产出之后：外部运行时确实不导出逐步事件。 */}
+      <p role="status" className="text-ui-caption text-foreground-subtle">
+        {t("home.detailsUnavailable", { reason: t(`home.reason.${reason}`) })}
+      </p>
+      {task?.runtimeState ? (
+        <p className="text-ui-caption text-foreground-subtle">
+          {t("home.runtimeState", { state: task.runtimeState })}
+        </p>
+      ) : null}
     </div>
   );
 }

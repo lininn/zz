@@ -47,7 +47,9 @@ for (const locale of ["en-US", "zh-CN"] as const) {
       </ZCodeIntlProvider>,
     );
     assert.match(html, /data-testid="crew-chat"/);
-    assert.match(html, /data-sender="system"/);
+    // 执行归属于发起它的成员，不再是无主的系统事件。
+    assert.match(html, /data-sender="a"/);
+    assert.doesNotMatch(html, /data-sender="system"/);
     assert.equal((html.match(/data-testid="crew-message-group"/g) ?? []).length, 2);
     assert.equal((html.match(/data-testid="crew-execution-row"/g) ?? []).length, 1);
     assert.match(html, /@Original Analyst/);

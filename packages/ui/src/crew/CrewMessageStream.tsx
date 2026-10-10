@@ -14,7 +14,12 @@ import { useCrewText } from "@/hooks/useCrewText.js";
 import type { CrewRelayResponse } from "./CrewRelayCard.js";
 import { crewRelayApprovalBlocked, crewRelayDisplayText } from "./crewRelayUi.js";
 import { CrewExecutionRow } from "./CrewExecutionRow.js";
-import { crewChatEntries, crewReplyPreview, type CrewChatMessage } from "./crewChatPresentation.js";
+import {
+  crewChatEntries,
+  crewChatTimestamp,
+  crewReplyPreview,
+  type CrewChatMessage,
+} from "./crewChatPresentation.js";
 import { crewErrorKey } from "./crewErrors.js";
 
 function CrewMessageBody({ item, senderName }: { item: CrewChatMessage; senderName: string }) {
@@ -123,16 +128,22 @@ export function CrewMessageStream({
         {entries.map((entry) => {
           if (entry.kind === "execution")
             return (
-              <CrewExecutionRow
-                visible={visible}
-                key={entry.key}
-                execution={entry.execution}
-                pending={pending}
-                onCancel={onCancel}
-                onRespondPermission={onRespondPermission}
-                onRespondRelay={onRespondRelay}
-                relayApprovalBlocked={crewRelayApprovalBlocked(detail, entry.execution)}
-              />
+              <div key={entry.key} className="min-w-0 space-y-2">
+                {entry.executions.map((execution, index) => (
+                  <CrewExecutionRow
+                    visible={visible}
+                    key={execution.executionId}
+                    execution={execution}
+                    // 同一成员连续派工只在该回合的第一条上画头像与名字。
+                    showHeader={index === 0}
+                    pending={pending}
+                    onCancel={onCancel}
+                    onRespondPermission={onRespondPermission}
+                    onRespondRelay={onRespondRelay}
+                    relayApprovalBlocked={crewRelayApprovalBlocked(detail, execution)}
+                  />
+                ))}
+              </div>
             );
           const user = entry.sender.kind === "user";
           const system = entry.sender.kind === "system";
@@ -142,8 +153,8 @@ export function CrewMessageStream({
               ? t("home.system")
               : (entry.sender.name ?? t("formerMember"));
           // 身份色同时用于头像底色与成员名，让同一成员在长流里能被一眼扫到。
-          const identityColor =
-            user || system ? null : avatarColor(entry.sender.memberId ?? name);
+          const identityColor = user || system ? null : avatarColor(entry.sender.memberId ?? name);
+          const timestamp = crewChatTimestamp(entry.messages[0]!.message.createdAt);
           return (
             <article
               key={entry.key}
@@ -156,7 +167,11 @@ export function CrewMessageStream({
                   "flex size-8 shrink-0 items-center justify-center rounded-full text-ui-caption font-semibold",
                   user || system ? "bg-surface text-foreground-subtle" : undefined,
                 )}
-                style={identityColor ? { backgroundColor: `${identityColor}1f`, color: identityColor } : undefined}
+                style={
+                  identityColor
+                    ? { backgroundColor: `${identityColor}1f`, color: identityColor }
+                    : undefined
+                }
                 aria-hidden="true"
               >
                 {user ? (
@@ -168,13 +183,24 @@ export function CrewMessageStream({
                 )}
               </div>
               <div className="min-w-0 flex-1 space-y-2">
-                <header
-                  className={cn(
-                    "min-w-0 break-words text-ui-base font-medium",
-                    system ? "text-foreground-subtle" : "text-foreground",
-                  )}
-                >
-                  {name}
+                <header className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span
+                    className={cn(
+                      "min-w-0 break-words text-ui-base font-medium",
+                      system ? "text-foreground-subtle" : "text-foreground",
+                    )}
+                  >
+                    {name}
+                  </span>
+                  {timestamp ? (
+                    <time
+                      className="shrink-0 text-ui-caption text-foreground-subtlest"
+                      data-crew-timestamp="true"
+                      dateTime={new Date(entry.messages[0]!.message.createdAt).toISOString()}
+                    >
+                      {timestamp}
+                    </time>
+                  ) : null}
                 </header>
                 <div
                   className={cn(
