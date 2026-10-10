@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# @lininn/zz 打包用的 server 单文件 bundle 输出，本地构建产物不入库。
+dist-npm/
 # zcode-server-cli 发行包 staging 输出，本地组装产物不入库。
 dist-release/
 # macOS CI 按架构隔离 electron-builder 输出目录，这些仍是构建产物。

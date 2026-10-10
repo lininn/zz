@@ -83,13 +83,18 @@ function tryListen(port: number, host: string): Promise<boolean> {
  * 构建后位于 packages/server/dist/entry-http.js 或通过 require.resolve 解析。
  */
 function resolveServerEntryPath(): string {
-  // 优先从 monorepo 中查找（开发模式）
+  // npm 安装形态：server 已随包内嵌为单文件 bundle（dist/server.mjs），
+  // 不依赖未发布的 @zcode/server 包。
+  const packagedServerEntry = resolve(thisDir, "server.mjs");
+  if (existsSync(packagedServerEntry)) return packagedServerEntry;
+
+  // 开发模式：monorepo 中 packages/server 的 tsup 产物。
   const monorepoServerEntry = resolve(
     thisDir, "../../../../../packages/server/dist/entry-http.js",
   );
   if (existsSync(monorepoServerEntry)) return monorepoServerEntry;
 
-  // npm 安装后 server 包在 node_modules/@zcode/server
+  // 兜底：解析已安装的 @zcode/server 包。
   try {
     const req = createRequire(typeof __dirname === "string" ? `file://${__dirname}/` : import.meta.url);
     return req.resolve("@zcode/server/dist/entry-http.js");

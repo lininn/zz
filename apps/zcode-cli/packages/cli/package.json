@@ -1,7 +1,12 @@
 {
   "name": "@lininn/zz",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI coding assistant CLI — zz command",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zai-org/ZCode.git"
+  },
   "bin": {
     "zz": "./dist/zcode.cjs"
   },
@@ -13,6 +18,7 @@
   "main": "./dist/zcode.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:npm": "node scripts/build-npm-package.mjs",
     "build:desktop-agent": "node scripts/build.mjs --desktop-agent",
     "build:sea": "pnpm --dir ../../../.. exec turbo --skip-infer --cwd apps/zcode-cli run build --filter=!@lininn/zz --force && pnpm build && node scripts/build-sea.mjs --all",
     "sea": "node scripts/build-sea.mjs",

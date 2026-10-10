@@ -31,11 +31,15 @@ const assetPrefix = "zcode-tui-runtime/";
 const manifestAssetKey = `${assetPrefix}manifest.json`;
 const packageEntryPath = "node_modules/@zcode/tui/dist/index.js";
 const manifestFileName = "manifest.json";
+// npm 安装形态：TUI 运行时随包 vendored 到 dist/tui/，不依赖未发布的 @zcode/tui 包。
+const bundledTuiEntry = "tui/index.js";
 
 export const loadTuiRuntime = async (): Promise<TuiRuntimeModule> => {
   const sea = await import("node:sea");
 
   if (!sea.isSea()) {
+    const vendoredEntry = resolveBundledTuiEntry();
+    if (vendoredEntry) return await import(pathToFileURL(vendoredEntry).href);
     return await import("@zcode/tui");
   }
 
@@ -135,6 +139,14 @@ const cacheBaseDirectory = (): string => {
     "zcode",
     "sea-assets",
   );
+};
+
+/** npm 安装形态下 bundle 的 __dirname 指向 dist/，TUI 运行时 vendored 在 dist/tui/。 */
+const resolveBundledTuiEntry = (): string | undefined => {
+  const directory = typeof __dirname === "string" ? __dirname : undefined;
+  if (!directory) return undefined;
+  const candidate = join(directory, bundledTuiEntry);
+  return existsSync(candidate) ? candidate : undefined;
 };
 
 const markerPathForDirectory = (directory: string): string => join(directory, manifestFileName);
