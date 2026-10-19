@@ -79,6 +79,7 @@ export function CrewAgentEditor({
           <Input
             id={`${id}-name`}
             required
+            size="lg"
             maxLength={200}
             value={input.name}
             className="text-mobile-input-safe md:text-ui-base"
@@ -91,7 +92,8 @@ export function CrewAgentEditor({
             id={`${id}-prompt`}
             maxLength={32000}
             value={input.systemPrompt}
-            className="min-h-28 text-mobile-input-safe md:text-ui-base"
+            // 角色提示词常有数百字，起始高度给足才看得出这是主要编辑区而非只读说明。
+            className="max-h-[32rem] min-h-40 overflow-y-auto text-mobile-input-safe md:text-ui-base"
             placeholder={t("rolePlaceholder")}
             onChange={(event) => change({ systemPrompt: event.target.value })}
           />

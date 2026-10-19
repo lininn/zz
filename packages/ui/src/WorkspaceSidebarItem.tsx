@@ -208,6 +208,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   const confirmDialog = useConfirmDialog();
   const baseServices = useBaseWorkspaceServices();
   const zcodeTaskService = services.zcodeTaskService;
+  const settingService = services.settingService;
   const taskItemsRef = useRef(taskItems);
   taskItemsRef.current = taskItems;
   const workspaceZCodeStateRef = useRef(workspaceZCodeState);
@@ -382,6 +383,21 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       },
       zcodeTaskService,
     });
+    // 只关 tab 不够：启动恢复会把 recentProjects 和 lastWorkspaceSession 取并集
+    // （useTabPersistence 的 buildRestoredRecentProjectPaths），残留的 recentProjects
+    // 会让刚移除的项目在重启后原样复活。点「移除」的语义就是不想再看到它，这里一并清掉。
+    void settingService
+      ?.get()
+      .then(async (settings) => {
+        const recentProjects = settings.recentProjects ?? [];
+        const nextRecentProjects = recentProjects.filter((path) => path !== tab.workspacePath);
+        if (nextRecentProjects.length === recentProjects.length) return;
+        await settingService.update({ recentProjects: nextRecentProjects });
+      })
+      .catch((error: unknown) => {
+        // 清理最近项目失败不应阻断移除本身；tab 已关闭，下次启动至多再出现一次。
+        logger.debug("[WorkspaceSidebarItem] 清理 recentProjects 失败", { workspaceKey, error });
+      });
     // 移除 workspace 只是移除入口和连接历史，不代表用户要隐藏历史任务：
     // 这里只失效缓存，保留 sqlite 任务索引原状态，避免重连同一 SSH workspace 后任务像“丢了”。
     invalidateTaskQueryCacheByScopes([
@@ -424,6 +440,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     tab.id,
     tab.workspaceIdentity,
     tab.workspacePath,
+    settingService,
     zcodeTaskService,
   ]);
 
