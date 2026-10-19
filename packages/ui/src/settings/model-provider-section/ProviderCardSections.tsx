@@ -12,6 +12,7 @@ import type {
   ProviderSettingsFormModel,
 } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ProviderModelDiscoveryApiType } from "@zcode/shared";
 import type { ProviderApiType } from "@zcode/provider";
 import {
   TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
@@ -356,6 +357,7 @@ export function ProviderModelsSection({
   onAddModel,
   onReorderModelIds,
   settingsRevision = 0,
+  modelDiscovery,
 }: {
   providerId: string;
   providerName?: string;
@@ -373,6 +375,12 @@ export function ProviderModelsSection({
   onAddModel: (model: ProviderSettingsFormModel) => void | Promise<void>;
   onReorderModelIds?: (modelIds: string[]) => void;
   settingsRevision?: number;
+  /** 透传给「添加/编辑模型」对话框的「获取模型」按钮；缺省时不渲染该按钮。 */
+  modelDiscovery?: {
+    apiType: ProviderModelDiscoveryApiType;
+    baseUrl: string;
+    apiKey?: string;
+  };
 }) {
   const { intl } = useZCodeIntl();
   const { providerSettingsService } = useServices();
@@ -523,6 +531,7 @@ export function ProviderModelsSection({
                       })
                     }
                     settingsRevision={settingsRevision}
+                    modelDiscovery={modelDiscovery}
                     onDelete={!model.builtin ? () => onDeleteModel(model.modelId) : undefined}
                     onEnabledChange={(enabled) => {
                       void Promise.resolve(onModelEnabledChange?.(model.modelId, enabled)).catch(
@@ -575,6 +584,7 @@ export function ProviderModelsSection({
           onModelIdBlur={() => {
             void editor.flush().catch(() => undefined);
           }}
+          modelDiscovery={modelDiscovery}
         />
       </>
     </div>

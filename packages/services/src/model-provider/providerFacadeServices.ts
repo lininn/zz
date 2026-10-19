@@ -18,6 +18,8 @@ import {
 } from "@zcode/provider";
 import { createServiceDescriptor } from "../descriptors.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ProviderModelDiscoveryRequest, ProviderModelDiscoveryResult } from "@zcode/shared";
+import { discoverProviderModels } from "./providerModelDiscovery.js";
 import { createServiceLogger } from "../logger/serviceLogger.js";
 
 export type {
@@ -68,6 +70,12 @@ export interface IProviderSettingsService {
   testModelConnectivity(
     input: ProviderSettingsConnectivityRequest,
   ): Promise<ModelConnectivityResult>;
+  /**
+   * 拉取上游 /models 作为「添加/编辑模型」对话框的候选；读的是表单里当前填的
+   * baseUrl/apiKey，与已落盘的 Provider 配置无关，所以不经过 ensureReady。
+   * 失败返回 result 对象而不抛：用户还要能手填模型 ID。
+   */
+  discoverModels(input: ProviderModelDiscoveryRequest): Promise<ProviderModelDiscoveryResult>;
 }
 
 export const IProviderSettingsService = createServiceDescriptor<IProviderSettingsService>(
@@ -206,6 +214,8 @@ export function createProviderSettingsService(
         modelId: input.modelId,
       });
     },
+    // 读表单里现填的 baseUrl/apiKey，不碰已落盘配置，所以不用 ensureReady。
+    discoverModels: (input) => discoverProviderModels(input),
   };
 }
 

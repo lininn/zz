@@ -3691,6 +3691,13 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelsEmpty": "No models are configured. Add a model to use it in chat.",
   "settings.modelProvider.addModel": "Add model",
   "settings.modelProvider.modelId": "Model ID",
+  "settings.modelProvider.fetchModels": "Fetch models",
+  "settings.modelProvider.fetchModelsPending": "Fetching…",
+  "settings.modelProvider.fetchModelsEmpty": "No matching model — you can type one in",
+  "settings.modelProvider.fetchModelsSuccess": "Fetched {count} models",
+  "settings.modelProvider.fetchModelsFailed":
+    "Failed to fetch models: {message} (you can still type the model ID)",
+  "settings.modelProvider.fetchModelsNeedBaseUrl": "Fill in the Base URL first",
   "settings.modelProvider.modelDisplayName": "Display name",
   "settings.modelProvider.modelApiFormat.anthropic": "Anthropic messages",
   "settings.modelProvider.modelApiFormat.openaiCompatible": "OpenAI Compatible",

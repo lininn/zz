@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.js";
-import type { ModelConnectivityResult } from "@zcode/shared";
+import type { ModelConnectivityResult, ProviderModelDiscoveryApiType } from "@zcode/shared";
 import { Loader2Icon, Trash2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { ModelInputCapabilityBadge } from "@/components/ModelInputCapabilityBadge.js";
@@ -27,6 +27,7 @@ export function ModelRowInput({
   onDelete,
   onEnabledChange,
   onTest,
+  modelDiscovery,
 }: {
   model: ProviderSettingsFormModel;
   providerId: string;
@@ -44,6 +45,12 @@ export function ModelRowInput({
   onDelete?: () => void;
   onEnabledChange?: (enabled: boolean) => void;
   onTest?: (model: string) => Promise<ModelConnectivityResult>;
+  /** 透传给编辑对话框的「获取模型」按钮；缺省时不渲染该按钮。 */
+  modelDiscovery?: {
+    apiType: ProviderModelDiscoveryApiType;
+    baseUrl: string;
+    apiKey?: string;
+  };
 }) {
   const { intl, locale } = useZCodeIntl();
   const { showFeedback } = useProviderDetailFeedback();
@@ -313,6 +320,7 @@ export function ModelRowInput({
           onModelIdBlur={() => {
             void editor.flush().catch(() => undefined);
           }}
+          modelDiscovery={modelDiscovery}
           modelIdReadOnly={model.builtin}
         />
         {onDelete ? (
