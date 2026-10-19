@@ -55,6 +55,9 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+      // 默认只绑到 IPv6 的 [::1]，浏览器里敲 127.0.0.1:5173 会直接连不上。
+      // 显式监听全部地址，让 localhost / 127.0.0.1 两种写法都能进。
+      host: true,
       proxy: {
         // Web 登录本地调试时，OAuth token 交换必须先命中线上同源接口。
         // 该专用代理放在 `/api` 通配代理之前，避免被转发到本地 server 导致 404。

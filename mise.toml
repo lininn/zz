@@ -36,7 +36,7 @@ run = "mise exec -- node scripts/mise-run.mjs pnpm typecheck"
 description = "Run the root linter."
 run = "mise exec -- node scripts/mise-run.mjs pnpm lint"
 
-[tasks.zz]
+[tasks.zzdev]
 description = "快捷启动命令行 Agent CLI（开发模式）。"
 # 外部 runtime（Codex / Claude CLI）派工需要显式声明宿主的隔离承诺：
 # preflight 是 fail-closed 设计，未声明时所有外部成员探测为 outer_isolation_missing 而不可用。
