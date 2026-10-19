@@ -115,3 +115,56 @@ test("concurrent acquisition admits exactly one writer; stale token cannot rebin
     await f.close();
   }
 });
+
+test("启动清扫回收持有者已消失的租约", async () => {
+  const f = await stores();
+  try {
+    // host-a 持锁后进程消失：quiescent 收口和 reapDeadEntry 都不会再碰这行，
+    // 以前只能永久占住 workspace，重启也解不开。
+    await f.a.acquire({ workspaceKey: "workspace:dead", sessionId: "sess-dead" });
+    f.live.delete(900001);
+
+    const reclaimed = await f.b.reclaimAbandoned();
+    assert.equal(reclaimed, 1);
+    assert.equal(await f.b.get("workspace:dead"), null);
+
+    // 清扫后同一 workspace 必须能被重新获取，否则等于没修。
+    const next = await f.b.acquire({ workspaceKey: "workspace:dead", sessionId: "sess-next" });
+    assert.equal(next.sessionId, "sess-next");
+  } finally {
+    await f.close();
+  }
+});
+
+test("启动清扫不动仍然存活的持有者", async () => {
+  const f = await stores();
+  try {
+    await f.a.acquire({ workspaceKey: "workspace:live", sessionId: "sess-live" });
+
+    // host-a 还活着：这把锁归它管，清扫越界会让两个 Host 同时写同一工作区。
+    const reclaimed = await f.b.reclaimAbandoned();
+    assert.equal(reclaimed, 0);
+    assert.equal((await f.b.get("workspace:live"))?.sessionId, "sess-live");
+    await assert.rejects(
+      () => f.b.acquire({ workspaceKey: "workspace:live", sessionId: "other" }),
+      /crew\.workspaceBusy/,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test("启动清扫跳过本进程自己的租约", async () => {
+  const f = await stores();
+  try {
+    await f.a.acquire({ workspaceKey: "workspace:self", sessionId: "sess-self" });
+
+    // 自己的 ownerId 永远不参与清扫：localOwners 判活与 pid 判活语义不同，
+    // 误删会把本进程正在用的锁清掉。
+    const reclaimed = await f.a.reclaimAbandoned();
+    assert.equal(reclaimed, 0);
+    assert.equal((await f.a.get("workspace:self"))?.sessionId, "sess-self");
+  } finally {
+    await f.close();
+  }
+});

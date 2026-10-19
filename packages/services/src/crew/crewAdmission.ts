@@ -350,6 +350,39 @@ export class CrewWriteAdmission {
     });
   }
 
+  /**
+   * 派工收尾：释放本次执行自己持有的 workspace 租约。
+   *
+   * 正常路径靠 scheduleRelease 的 quiescent 判定收口，但执行转 failed 时那条路不一定
+   * 走到（例如 ACK 失败、runtime 起不来），租约就会一直挂着，后续派工全部撞
+   * 「此工作区已有写入执行」，且因为进程还活着，acquire 的接管分支和 reapDeadEntry 都
+   * 不会动它。这里按 sessionId 精确释放，只放自己那把锁：
+   * - entry 不存在、或 lease.sessionId 不是本次派工 → 不是我的锁，直接返回；
+   * - interrupted entry 保留给「检查恢复」显式收口，不在这里抢着放。
+   */
+  async releaseAfterTerminal(target: ZCodeAgentSessionTarget): Promise<void> {
+    const key = resolveWorkspaceKey(target);
+    await this.serial(key, async () => {
+      const entry = this.entries.get(key);
+      if (!entry || entry.lease.sessionId !== target.sessionId || entry.interrupted) return;
+      entry.monitor?.dispose();
+      try {
+        await this.leases.release(entry.lease);
+      } catch (error) {
+        log.warn(undefined, "终态释放群组租约失败，等待启动清扫兜底", {
+          event: "crew.admission.terminal_release_failed",
+          module: "agent-crew-admission",
+          workspaceKey: key,
+          sessionId: target.sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      this.entries.delete(key);
+      for (const waiter of entry.idleWaiters) waiter.reject(new Error("crew.recoveryRequired"));
+      entry.idleWaiters = [];
+    });
+  }
+
   onRuntimeExit(pid: number): void {
     for (const [key, entry] of this.entries) {
       if (entry.lease.runtimePid !== pid) continue;

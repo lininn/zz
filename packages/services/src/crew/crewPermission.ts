@@ -7,7 +7,10 @@ import {
 import type { CrewRuntimePort } from "./contract.js";
 import type { CrewStore } from "./crewStore.js";
 
-/** 权限仍需现有人为批准；接力模式不会改变此入口。 */
+/**
+ * 群组成员以 yolo 模式派工，常规工具调用不再弹确认（见 crewRuntime 的 createSession）。
+ * 这条入口留给仍会升级到人工的少数情况（工具自报 alwaysAsk 等 yolo 也压不过的 gate）。
+ */
 export async function respondCrewPermission(
   store: CrewStore,
   runtime: CrewRuntimePort,

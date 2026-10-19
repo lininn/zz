@@ -2697,6 +2697,26 @@ export function createLocalServices(options: {
       crewOwner.dispose();
     },
   });
+  // 进程被强杀、或执行转 failed 时没走到 release，都会在租约表里留下持有者已消失的行。
+  // acquire 的接管分支要求 owner 死 + runtime 死 + runtimePid 非空，覆盖不到这些情况，
+  // 结果是该 workspace 永久报「已有写入执行」且重启也解不开。这里在派工开始前先清一遍。
+  void crewLeases
+    .reclaimAbandoned()
+    .then((count) => {
+      if (count > 0)
+        createServiceLogger("agent-crew").info(undefined, "已回收无主的群组工作区租约", {
+          event: "crew.lease.reclaimed",
+          module: "services.crew",
+          count,
+        });
+    })
+    .catch((error: unknown) => {
+      createServiceLogger("agent-crew").warn(undefined, "回收无主群组租约失败", {
+        event: "crew.lease.reclaim_failed",
+        module: "services.crew",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   void recoverCrewConversations(crewService).catch(() =>
     createServiceLogger("agent-crew").warn(undefined, "群组启动恢复失败，等待显式重试"),
   );

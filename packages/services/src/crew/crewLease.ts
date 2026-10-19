@@ -175,6 +175,49 @@ export class CrewLeaseStore {
     return this.read(workspaceKey);
   }
 
+  /**
+   * 启动清扫：删掉持有者进程已经不存在的租约。
+   *
+   * `acquire` 的接管分支要求 owner 死 **且** runtime 死 **且** runtimePid 非空，三者缺一
+   * 就不接管。进程被强杀（或执行转 failed 时没走到 release）留下的行因此会永久占住
+   * workspace，表现为「此工作区已有写入执行」且重启也解不开——没有任何在线路径会再碰它。
+   *
+   * 这里只按 owner 存活判定：owner 是写入准入的归属进程，它不在了，这条租约就不可能
+   * 再被任何人正常释放。runtime 子进程是否残留交给后续 acquire/reap 判断，不在清扫范围。
+   * 必须在本进程开始派工前调用，否则会误删同机其他活跃 Host 的租约。
+   */
+  async reclaimAbandoned(): Promise<number> {
+    await this.ensureReady();
+    const db = this.db!;
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const abandoned = db
+        .prepare("SELECT workspace_key, token, owner_id FROM agent_crew_workspace_leases")
+        .all()
+        .filter((row) => {
+          const ownerId = String(row.owner_id);
+          // 本进程自己的租约绝不清扫：启动期本就不该有，有也属于 localOwners 的活记录。
+          if (ownerId === this.ownerId) return false;
+          const ownerPid = Number(ownerId.split(":")[0]);
+          if (!Number.isInteger(ownerPid) || ownerPid <= 0) return false;
+          return !(this.alive === isCrewProcessAlive
+            ? isCrewOwnerAlive(ownerId)
+            : this.alive(ownerPid));
+        });
+      for (const row of abandoned) {
+        db.prepare("DELETE FROM agent_crew_workspace_leases WHERE workspace_key=? AND token=?").run(
+          String(row.workspace_key),
+          String(row.token),
+        );
+      }
+      db.exec("COMMIT");
+      return abandoned.length;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
   private read(key: string): CrewWorkspaceLease | null {
     const row = this.db!.prepare(
       "SELECT * FROM agent_crew_workspace_leases WHERE workspace_key=?",

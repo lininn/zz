@@ -126,3 +126,48 @@ test("quiescence excludes background tasks, goal continuation, queued work and w
   assert(!isCrewWorkspaceQuiescent({ ...idle, goal: { status: "active" } } as typeof idle));
   assert(!isCrewWorkspaceQuiescent({ ...idle, subagents: { running: [{}] } } as typeof idle));
 });
+
+test("失败收尾释放自己的租约，后续派工不再被挡", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "crew-admission-terminal-"));
+  const f = fakeAgent();
+  const leases = new CrewLeaseStore(join(dir, "tasks.sqlite"), "900001:owner", () => true);
+  const gate = new CrewWriteAdmission(f.agent, leases, () => true);
+  const wrapped = gate.wrap(f.agent);
+  try {
+    await wrapped.sendConversationCommandV4({ ...target, envelope: envelope(target.sessionId) });
+    assert.notEqual(await leases.get("/workspace"), null);
+
+    // 执行失败时不会走到 quiescent 收口；进程还活着，acquire 的接管分支和
+    // reapDeadEntry 也都不动它，以前这里会永久卡住 workspace。
+    await gate.releaseAfterTerminal(target);
+    assert.equal(await leases.get("/workspace"), null);
+
+    await wrapped.sendConversationCommandV4({ ...target, envelope: envelope("next") });
+    assert.equal(f.sendCount, 2);
+  } finally {
+    gate.dispose();
+    leases.close();
+    f.frames.dispose();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("终态释放只放自己那把锁，不碰别的会话", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "crew-admission-foreign-"));
+  const f = fakeAgent();
+  const leases = new CrewLeaseStore(join(dir, "tasks.sqlite"), "900001:owner", () => true);
+  const gate = new CrewWriteAdmission(f.agent, leases, () => true);
+  const wrapped = gate.wrap(f.agent);
+  try {
+    await wrapped.sendConversationCommandV4({ ...target, envelope: envelope(target.sessionId) });
+
+    // sessionId 对不上说明这把锁属于别的派工，抢放会让两个执行同时写同一工作区。
+    await gate.releaseAfterTerminal({ ...target, sessionId: "someone-else" });
+    assert.notEqual(await leases.get("/workspace"), null);
+  } finally {
+    gate.dispose();
+    leases.close();
+    f.frames.dispose();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
