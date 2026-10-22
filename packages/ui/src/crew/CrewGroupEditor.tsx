@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { crewCreateParamsSchema } from "@zcode/shared";
+import { CREW_ANNOUNCEMENT_MAX_CHARS, crewCreateParamsSchema } from "@zcode/shared";
 import type {
   CrewAgent,
   CrewCreateParams,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button.js";
 import { Checkbox } from "@/components/ui/checkbox.js";
 import { Input } from "@/components/ui/input.js";
 import { Label } from "@/components/ui/label.js";
+import { Textarea } from "@/components/ui/textarea.js";
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ export function CrewGroupEditor({
   const t = useCrewText();
   const id = useId();
   const [name, setName] = useState(group?.name ?? "");
+  const [announcement, setAnnouncement] = useState(group?.announcement ?? "");
   const [members, setMembers] = useState<CrewMemberInput[]>(() => group?.members ?? []);
   const [binding, setBinding] = useState(group?.workspaceBinding ?? null);
   const [relay, setRelay] = useState(() => crewRelaySettings(group));
@@ -54,7 +56,7 @@ export function CrewGroupEditor({
     let params: CrewCreateParams;
     try {
       params = crewCreateParamsSchema.parse({
-        ...crewGroupInput(name, effectiveMembers, agents),
+        ...crewGroupInput(name, effectiveMembers, agents, announcement),
         ...relay,
       });
     } catch (cause) {
@@ -81,6 +83,19 @@ export function CrewGroupEditor({
             className="text-mobile-input-safe md:text-ui-base"
             onChange={(event) => setName(event.target.value)}
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${id}-announcement`}>{t("groupAnnouncement")}</Label>
+          <Textarea
+            id={`${id}-announcement`}
+            value={announcement}
+            maxLength={CREW_ANNOUNCEMENT_MAX_CHARS}
+            rows={3}
+            className="text-mobile-input-safe md:text-ui-base"
+            placeholder={t("groupAnnouncementPlaceholder")}
+            onChange={(event) => setAnnouncement(event.target.value)}
+          />
+          <p className="text-ui-caption text-muted-foreground">{t("groupAnnouncementHint")}</p>
         </div>
         <CrewRelaySettings value={relay} disabled={pending} onChange={setRelay} />
         <CrewWorkspaceField

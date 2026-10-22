@@ -12,6 +12,7 @@ import { crewSidebarHarness, sidebarElements, sidebarText } from "./crewSidebarH
 const group: CrewGroup = {
   groupId: "group",
   name: "Reviewers",
+  announcement: "",
   workspaceBinding: null,
   members: [],
   epoch: 0,

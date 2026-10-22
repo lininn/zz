@@ -29,10 +29,10 @@ import {
 const { DatabaseSync } = createRequire(import.meta.url)(
   "node:sqlite",
 ) as typeof import("node:sqlite");
-type RelaySettings = Pick<
+type GroupSettings = Pick<
   CrewGroup,
   "relayMode" | "relayAutoHops" | "relayBudgetMinutes" | "relayPaused"
->;
+> & { announcement?: string };
 export const CREW_UNRESOLVED = "'queued','running','recovery_required'";
 
 /** CrewService 的持久化适配器；所有读改写在同一个 SQLite 写锁中完成。 */
@@ -103,6 +103,7 @@ export class CrewStore {
     return crewGroupSchema.parse({
       groupId: row.group_id,
       name: row.name,
+      announcement: row.announcement ?? "",
       relayMode: row.relay_mode,
       relayAutoHops: row.relay_auto_hops,
       relayBudgetMinutes: row.relay_budget_minutes,
@@ -160,6 +161,7 @@ export class CrewStore {
       conversations: this.conversations(groupId),
       resolvedMembers: group.members.map((member) => this.resolve(member)),
       messages: this.messages(groupId, conversation.conversationId),
+      events: this.events(groupId, conversation.conversationId),
       executions: this.executions(groupId, conversation.conversationId),
     };
   }
@@ -167,7 +169,16 @@ export class CrewStore {
     const conversation = this.conversation(groupId, conversationId);
     return this.db
       .prepare(
-        "SELECT * FROM agent_crew_messages WHERE group_id=? AND conversation_id=? ORDER BY sequence",
+        "SELECT * FROM agent_crew_messages WHERE group_id=? AND conversation_id=? AND kind='chat' ORDER BY sequence",
+      )
+      .all(groupId, conversation.conversationId)
+      .map(readMessage);
+  }
+  events(groupId: string, conversationId?: string): CrewMessage[] {
+    const conversation = this.conversation(groupId, conversationId);
+    return this.db
+      .prepare(
+        "SELECT * FROM agent_crew_messages WHERE group_id=? AND conversation_id=? AND kind='event' ORDER BY sequence",
       )
       .all(groupId, conversation.conversationId)
       .map(readMessage);
@@ -201,15 +212,16 @@ export class CrewStore {
       throw new Error("crew.groupBusy");
     }
   }
-  create(name: string, members: CrewMember[], settings: RelaySettings = {}): CrewGroup {
+  create(name: string, members: CrewMember[], settings: GroupSettings = {}): CrewGroup {
     const now = Date.now(),
       groupId = randomUUID();
     this.db
-      .prepare(`INSERT INTO agent_crew_groups(group_id,name,binding_json,epoch,created_at,updated_at,
-        relay_mode,relay_auto_hops,relay_budget_minutes,relay_paused) VALUES(?,?,NULL,0,?,?,?,?,?,?)`)
+      .prepare(`INSERT INTO agent_crew_groups(group_id,name,announcement,binding_json,epoch,created_at,updated_at,
+        relay_mode,relay_auto_hops,relay_budget_minutes,relay_paused) VALUES(?,?,?,NULL,0,?,?,?,?,?,?)`)
       .run(
         groupId,
         name,
+        settings.announcement ?? "",
         now,
         now,
         settings.relayMode ?? "auto",
@@ -225,7 +237,7 @@ export class CrewStore {
     groupId: string,
     name: string,
     members?: CrewMember[],
-    settings: RelaySettings = {},
+    settings: GroupSettings = {},
   ): CrewGroup {
     if (
       settings.relayPaused !== undefined &&
@@ -233,11 +245,13 @@ export class CrewStore {
     )
       invalidateCrewRelayAdmissions(this.db, groupId);
     this.db
-      .prepare(`UPDATE agent_crew_groups SET name=?,updated_at=?,relay_mode=COALESCE(?,relay_mode),
+      .prepare(`UPDATE agent_crew_groups SET name=?,announcement=COALESCE(?,announcement),updated_at=?,
+        relay_mode=COALESCE(?,relay_mode),
         relay_auto_hops=COALESCE(?,relay_auto_hops),relay_budget_minutes=COALESCE(?,relay_budget_minutes),
         relay_paused=COALESCE(?,relay_paused) WHERE group_id=?`)
       .run(
         name,
+        settings.announcement ?? null,
         Date.now(),
         settings.relayMode ?? null,
         settings.relayAutoHops ?? null,
@@ -357,7 +371,9 @@ export class CrewStore {
     }
     return { message, execution };
   }
-  insertMessage(input: Omit<CrewMessage, "sequence" | "createdAt">): CrewMessage {
+  insertMessage(
+    input: Omit<CrewMessage, "sequence" | "createdAt" | "kind"> & { kind?: CrewMessage["kind"] },
+  ): CrewMessage {
     const row = this.db
       .prepare(
         "SELECT COALESCE(MAX(sequence),0)+1 AS sequence FROM agent_crew_messages WHERE group_id=? AND conversation_id=?",
@@ -365,12 +381,13 @@ export class CrewStore {
       .get(input.groupId, input.conversationId)!;
     const message: CrewMessage = {
       ...input,
+      kind: input.kind ?? "chat",
       sequence: Number(row.sequence),
       createdAt: Date.now(),
     };
     this.db
       .prepare(`INSERT INTO agent_crew_messages(group_id,conversation_id,message_id,epoch,sequence,sender,
-        member_id,text,mentions_json,execution_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
+        kind,member_id,text,mentions_json,execution_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
       .run(
         message.groupId,
         message.conversationId,
@@ -378,6 +395,7 @@ export class CrewStore {
         message.epoch,
         message.sequence,
         message.sender,
+        message.kind,
         message.memberId,
         message.text,
         JSON.stringify(message.mentions),
@@ -393,6 +411,29 @@ export class CrewStore {
       )
       .run(message.createdAt, message.groupId, message.conversationId);
     return message;
+  }
+  insertEvent(input: {
+    groupId: string;
+    conversationId: string;
+    messageId: string;
+    epoch: number;
+    memberId: string;
+    text: string;
+    executionId: null;
+  }): CrewMessage {
+    // 事件用确定性 ID 幂等写入：同一执行重复熔断/重复审批不刷屏。
+    const existing = this.db
+      .prepare(
+        "SELECT * FROM agent_crew_messages WHERE group_id=? AND conversation_id=? AND message_id=?",
+      )
+      .get(input.groupId, input.conversationId, input.messageId);
+    if (existing) return readMessage(existing);
+    return this.insertMessage({
+      ...input,
+      sender: "member",
+      mentions: [],
+      kind: "event",
+    });
   }
   context(execution: CrewExecution): CrewMessage[] {
     return readCrewContext(this.db, execution);

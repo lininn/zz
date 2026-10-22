@@ -14,8 +14,8 @@ test("v7 is checksum-tracked and installs the exact shared workspace lease contr
     await runTasksDatabaseMigrations(db);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
     const ledger = db.prepare("SELECT id,checksum FROM tasks_schema_migration ORDER BY id").all();
-    assert.equal(ledger.at(-1)?.id, "0007_agent_crew_relay");
-    assert.equal(ledger.length, 9);
+    assert.equal(ledger.at(-1)?.id, "0008_agent_crew_announcement_events");
+    assert.equal(ledger.length, 10);
     assert.ok(
       !db
         .prepare("PRAGMA table_info(agent_crew_groups)")

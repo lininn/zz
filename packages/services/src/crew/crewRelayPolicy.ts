@@ -18,6 +18,11 @@ export function crewObjectiveHash(objective: string): string {
     .update(objective.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase())
     .digest("hex");
 }
+/** 成员明确表示本轮无话可说；空回复同样视为跳过，不写入群板。 */
+export function isCrewPass(text: string): boolean {
+  const value = text.trim();
+  return value === "" || /^[[【(（]?\s*pass\s*[\]】)）]?[.!。！]?$/iu.test(value);
+}
 export function crewRelayMessageId(root: string, hop: number, to: string): string {
   return `crew-relay-${createHash("sha256")
     .update(JSON.stringify([root, hop, to]))

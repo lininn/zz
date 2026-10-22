@@ -112,8 +112,8 @@ test("v6 preserves every v5 message/execution field and installs one default eve
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
     const after = rows(db, "tasks_schema_migration");
-    assert.equal(after.at(-1)?.id, "0007_agent_crew_relay");
-    assert.equal(after.length, 9);
+    assert.equal(after.at(-1)?.id, "0008_agent_crew_announcement_events");
+    assert.equal(after.length, 10);
     await runTasksDatabaseMigrations(db);
     assert.deepEqual(rows(db, "tasks_schema_migration"), after);
     assert.equal(rows(db, "agent_crew_conversations").length, 3);
@@ -129,12 +129,12 @@ test("v6 composite keys permit same message id per conversation and reject forei
     await runTasksDatabaseMigrations(db);
     db.exec("INSERT INTO agent_crew_conversations VALUES('a','second','Task',0,100,100)");
     db.exec(`INSERT INTO agent_crew_messages
-      SELECT group_id,'second',message_id,epoch,sequence,sender,member_id,text,mentions_json,NULL,created_at
+      SELECT group_id,'second',message_id,epoch,sequence,sender,member_id,text,mentions_json,NULL,created_at,kind
       FROM agent_crew_messages WHERE group_id='a' AND conversation_id='a' AND message_id='m0'`);
     assert.throws(
       () =>
         db.exec(`INSERT INTO agent_crew_messages
-      SELECT group_id,'b',message_id,epoch,sequence,sender,member_id,text,mentions_json,NULL,created_at
+      SELECT group_id,'b',message_id,epoch,sequence,sender,member_id,text,mentions_json,NULL,created_at,kind
       FROM agent_crew_messages WHERE group_id='a' AND conversation_id='second'`),
       /FOREIGN KEY/,
     );

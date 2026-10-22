@@ -44,7 +44,7 @@ CREATE TABLE agent_crew_groups (
   CHECK(relay_mode IN ('manual','semi','auto')), relay_auto_hops INTEGER NOT NULL DEFAULT 2
   CHECK(relay_auto_hops BETWEEN 0 AND 8), relay_budget_minutes INTEGER NOT NULL DEFAULT 30
   CHECK(relay_budget_minutes BETWEEN 1 AND 1440), relay_paused INTEGER NOT NULL DEFAULT 0
-  CHECK(relay_paused IN (0,1)));
+  CHECK(relay_paused IN (0,1)), announcement TEXT NOT NULL DEFAULT '');
 
 CREATE TABLE "agent_crew_members" (
   group_id TEXT NOT NULL REFERENCES agent_crew_groups(group_id) ON DELETE CASCADE,
@@ -68,7 +68,7 @@ CREATE TABLE "agent_crew_messages" (
   text TEXT NOT NULL,
   mentions_json TEXT NOT NULL,
   execution_id TEXT UNIQUE,
-  created_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL, kind TEXT NOT NULL DEFAULT 'chat',
   PRIMARY KEY(group_id,conversation_id,message_id),
   UNIQUE(group_id,conversation_id,sequence),
   FOREIGN KEY(group_id,conversation_id) REFERENCES agent_crew_conversations(group_id,conversation_id) ON DELETE CASCADE

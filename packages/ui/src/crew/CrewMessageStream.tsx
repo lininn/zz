@@ -28,16 +28,20 @@ function CrewMessageBody({ item, senderName }: { item: CrewChatMessage; senderNa
   const [expanded, setExpanded] = useState(false);
   const { message, execution, mentions } = item;
   const errorKey = crewErrorKey(message.text);
+  // 事件正文存 i18n key（如 error.relayHopLimit），只展示状态，不参与发言人逻辑。
   const text =
-    message.sender === "member" &&
-    execution &&
-    execution.status !== "succeeded" &&
-    errorKey !== "commandError"
-      ? t(errorKey)
-      : message.sender === "member"
-        ? crewRelayDisplayText(message.text)
-        : message.text;
-  const preview = message.sender === "member" ? crewReplyPreview(text) : null;
+    message.kind === "event"
+      ? t(message.text)
+      : message.sender === "member" &&
+          execution &&
+          execution.status !== "succeeded" &&
+          errorKey !== "commandError"
+        ? t(errorKey)
+        : message.sender === "member"
+          ? crewRelayDisplayText(message.text)
+          : message.text;
+  const preview =
+    message.kind !== "event" && message.sender === "member" ? crewReplyPreview(text) : null;
   return (
     <div className="min-w-0 space-y-2" data-message-id={message.messageId}>
       {mentions.length > 0 && (

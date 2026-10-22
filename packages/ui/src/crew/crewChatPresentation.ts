@@ -44,7 +44,9 @@ export function crewChatEntries(detail: CrewGroupDetail): CrewChatEntry[] {
   const belongs = (record: { groupId: string; conversationId: string }) =>
     record.groupId === detail.group.groupId &&
     record.conversationId === detail.conversation.conversationId;
-  const messages = detail.messages.filter(belongs).toSorted((a, b) => a.sequence - b.sequence);
+  const messages = [...detail.messages, ...(detail.events ?? [])]
+    .filter(belongs)
+    .toSorted((a, b) => a.sequence - b.sequence);
   const executions = detail.executions.filter(belongs);
   const currentMembers = new Map(detail.resolvedMembers.map((member) => [member.memberId, member]));
   const executionById = new Map(executions.map((execution) => [execution.executionId, execution]));
@@ -132,13 +134,16 @@ export function crewChatEntries(detail: CrewGroupDetail): CrewChatEntry[] {
     const execution =
       linked?.epoch === message.epoch && linked.memberId === message.memberId ? linked : undefined;
     const member = execution?.memberSnapshot ?? snapshot(message.memberId, message);
+    const event = message.kind === "event";
     const sender: CrewChatSender = {
-      kind: crewIsRelayDispatch(message, dispatches.get(message.messageId) ?? [])
+      kind: event
         ? "system"
-        : message.sender,
-      memberId: message.memberId,
-      name: message.sender === "member" ? (member?.name ?? null) : null,
-      configVersion: message.sender === "member" ? (member?.configVersion ?? null) : null,
+        : crewIsRelayDispatch(message, dispatches.get(message.messageId) ?? [])
+          ? "system"
+          : message.sender,
+      memberId: event ? null : message.memberId,
+      name: !event && message.sender === "member" ? (member?.name ?? null) : null,
+      configVersion: !event && message.sender === "member" ? (member?.configVersion ?? null) : null,
     };
     const projected: CrewChatMessage = {
       message,

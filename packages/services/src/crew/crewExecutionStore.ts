@@ -2,6 +2,7 @@ import { invalidateCrewRelayAdmissions } from "./crewRelayControl.js";
 import { randomUUID } from "node:crypto";
 import type { CrewExecution } from "@zcode/shared";
 import { CrewStore, readExecution } from "./crewStore.js";
+import { isCrewPass } from "./crewRelayPolicy.js";
 
 /** 状态更新必须携带旧 owner/status/epoch；旧结果不能覆盖恢复或新绑定纪元。 */
 export class CrewExecutionStore {
@@ -86,7 +87,9 @@ export class CrewExecutionStore {
           execution.epoch,
           execution.groupId,
         );
-      if (result.changes === 1)
+      // 成功但明确 [PASS]：执行收口，不写群板，也不触发下一跳接力。
+      const passed = status === "succeeded" && isCrewPass(text);
+      if (result.changes === 1 && !passed)
         this.store.insertMessage({
           groupId: execution.groupId,
           conversationId: execution.conversationId,
@@ -99,7 +102,7 @@ export class CrewExecutionStore {
           text: text.slice(0, 64000),
         });
       const saved = this.store.execution(execution.executionId);
-      if (result.changes === 1 && status === "succeeded") onSuccess?.(saved);
+      if (result.changes === 1 && status === "succeeded" && !passed) onSuccess?.(saved);
       return this.store.execution(execution.executionId);
     });
   }

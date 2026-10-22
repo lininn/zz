@@ -6,6 +6,7 @@ import { crewSidebarConversations, crewSidebarTree } from "./crewSidebarTree.js"
 const group = (groupId: string, workspaceBinding: CrewGroup["workspaceBinding"]): CrewGroup => ({
   groupId,
   name: groupId,
+  announcement: "",
   workspaceBinding,
   members: [],
   epoch: 0,

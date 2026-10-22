@@ -264,7 +264,9 @@ for (const final of ["Final answer without delegation", ""]) {
       const detail = await f.service.get({ groupId: group.groupId });
       assert.equal(detail.executions.length, 1);
       assert.equal(detail.executions[0]!.relay, undefined);
-      assert.equal(detail.messages.at(-1)?.text, final);
+      // 空最终回复按 PASS 处理：不写成员消息，只保留用户任务。
+      if (final === "") assert.equal(detail.messages.length, 1);
+      else assert.equal(detail.messages.at(-1)?.text, final);
       const prompt = (f.sent[0]?.envelope.payload as { text: string }).text;
       assert(prompt.includes("# Controlled crew handoff"));
       assert(prompt.includes('Allowed next members (exact names): ["Review"]'));

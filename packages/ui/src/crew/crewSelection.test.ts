@@ -18,6 +18,7 @@ const detail = (id: string): CrewGroupDetail => ({
   group: {
     groupId: "group",
     name: "Group",
+    announcement: "",
     members: [],
     workspaceBinding: null,
     epoch: 0,

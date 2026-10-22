@@ -14,6 +14,7 @@ import {
 } from "../src/session/tasksDatabase/migrations.js";
 
 const VERSION = "0007_agent_crew_relay";
+const LATEST = "0008_agent_crew_announcement_events";
 const FROZEN_LEDGER = [
   ["0001_adopt_task_schema", "3e8337b015d94b05dd31a6003f3acc649e821794cfa288bc0af3022698bd4d17"],
   ["0002_provider_selection", "7244ef7c351f8d02750ab1953fff09f493a71befbf1b6e2d4bab726b0c6b48fc"],
@@ -119,8 +120,8 @@ test("v7 preserves real v6 rows and all six frozen checksums, backfills roots an
     assert.equal(areTasksDatabaseMigrationsApplied(db), false);
     const migration = { kind: "upgrade" as const, executedCount: 0, committedCount: 0 };
     await runTasksDatabaseMigrations(db, { migration });
-    assert.equal(migration.executedCount, 3);
-    assert.equal(migration.committedCount, 3);
+    assert.equal(migration.executedCount, 4);
+    assert.equal(migration.committedCount, 4);
     for (const [i, table] of tables.entries()) {
       const oldRows = before[i]!;
       const keys = Object.keys(oldRows[0]!);
@@ -144,13 +145,13 @@ test("v7 preserves real v6 rows and all six frozen checksums, backfills roots an
       assert.equal(execution.relay_budget_minutes_snapshot, 30);
     }
     const after = rows(db, "tasks_schema_migration");
-    assert.equal(after.length, 9);
-    assert.equal(after.at(-1)?.id, VERSION);
+    assert.equal(after.length, 10);
+    assert.equal(after.at(-1)?.id, LATEST);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
     await runTasksDatabaseMigrations(db);
     assert.deepEqual(rows(db, "tasks_schema_migration"), after);
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
-    db.prepare("UPDATE tasks_schema_migration SET checksum='tampered' WHERE id=?").run(VERSION);
+    db.prepare("UPDATE tasks_schema_migration SET checksum='tampered' WHERE id=?").run(LATEST);
     await assert.rejects(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
     assert.equal(db.isTransaction, false);
   } finally {

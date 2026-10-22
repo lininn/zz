@@ -11,6 +11,7 @@ export function crewGroupInput(
   name: string,
   members: readonly CrewMemberInput[],
   agents: readonly CrewAgent[],
+  announcement?: string,
 ) {
   const seen = new Set<string>();
   const byId = new Map(agents.map((agent) => [agent.agentId, agent]));
@@ -24,6 +25,7 @@ export function crewGroupInput(
   }
   return crewCreateParamsSchema.parse({
     name: name.trim(),
+    ...(announcement === undefined ? {} : { announcement }),
     members: members.map(({ memberId, agentId, accessMode }) => ({
       ...(memberId ? { memberId } : {}),
       agentId,

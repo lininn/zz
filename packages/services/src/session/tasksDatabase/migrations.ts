@@ -1,4 +1,5 @@
 import { AGENT_CREW_RELAY_MIGRATION_SQL } from "#src/session/tasksDatabase/agent-crew-v7.js";
+import { AGENT_CREW_ANNOUNCEMENT_EVENTS_MIGRATION_SQL } from "#src/session/tasksDatabase/agent-crew-v8.js";
 import { AGENT_CREW_CONVERSATIONS_MIGRATION_SQL } from "#src/session/tasksDatabase/agent-crew-v6.js";
 import {
   AGENT_CATALOG_MIGRATION_SQL,
@@ -155,6 +156,12 @@ const definitions = [
     touchedTables: ["agent_crew_groups", "agent_crew_executions"],
     checksumInput: [AGENT_CREW_RELAY_MIGRATION_SQL],
     apply: (db: DatabaseSync) => db.exec(AGENT_CREW_RELAY_MIGRATION_SQL),
+  },
+  {
+    id: "0008_agent_crew_announcement_events",
+    touchedTables: ["agent_crew_groups", "agent_crew_messages"],
+    checksumInput: [AGENT_CREW_ANNOUNCEMENT_EVENTS_MIGRATION_SQL],
+    apply: (db: DatabaseSync) => db.exec(AGENT_CREW_ANNOUNCEMENT_EVENTS_MIGRATION_SQL),
   },
 ] as const;
 

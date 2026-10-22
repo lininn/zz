@@ -23,9 +23,22 @@ export class CrewRelayStore {
     return this.store.execution(execution.executionId);
   }
   block(execution: CrewExecution, reason: Reason): CrewExecution {
-    return execution.relay
-      ? this.save(execution, { ...execution.relay, status: "blocked", reason })
-      : execution;
+    if (!execution.relay) return execution;
+    const saved = this.save(execution, { ...execution.relay, status: "blocked", reason });
+    this.emitEvent(saved, "blocked", `error.${reason}`);
+    return saved;
+  }
+  /** 事件只用确定性 ID 记录状态，不带 executionId，避免与成员回复的 UNIQUE 列冲突。 */
+  private emitEvent(execution: CrewExecution, suffix: string, text: string): void {
+    this.store.insertEvent({
+      groupId: execution.groupId,
+      conversationId: execution.conversationId,
+      messageId: `crew-event-${execution.executionId}-${suffix}`,
+      epoch: execution.epoch,
+      memberId: execution.memberId,
+      text,
+      executionId: null,
+    });
   }
   propose(execution: CrewExecution, finalText: string): void {
     if (execution.relay || execution.status !== "succeeded") return;
@@ -50,7 +63,16 @@ export class CrewRelayStore {
     };
     const saved = this.save(execution, relay);
     const reason = this.reason(saved);
-    if (reason) this.block(saved, reason);
+    if (reason) {
+      this.block(saved, reason);
+      return;
+    }
+    if (saved.relay?.status === "awaiting_user_approval")
+      this.emitEvent(
+        saved,
+        "approval",
+        saved.relay.kind === "plan" ? "relay.planTitle" : "relay.handoffTitle",
+      );
   }
   /**
    * 正文 @成员名 通道：不要求任何 JSON，模型只要在回复里提到下一站成员即可。

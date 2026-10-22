@@ -200,6 +200,11 @@ const enUS: Record<string, string> = {
   "crew.createGroup": "Create crew",
   "crew.editGroup": "Edit crew",
   "crew.groupName": "Crew name",
+  "crew.groupAnnouncement": "Crew announcement",
+  "crew.groupAnnouncementHint":
+    "Provided to members as reference on every dispatch, up to 2000 characters. It is background context, not system instructions.",
+  "crew.groupAnnouncementPlaceholder":
+    "For example: this crew only handles the payments module; run tests before submitting.",
   "crew.remove": "Remove",
   "crew.access.read": "Read only",
   "crew.access.write": "Read and write",

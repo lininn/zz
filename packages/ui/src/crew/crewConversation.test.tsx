@@ -16,6 +16,7 @@ import { createCrewRequestScope, runCrewCommand } from "../hooks/crewRequestScop
 const group: CrewGroup = {
   groupId: "group",
   name: "Team",
+  announcement: "",
   members: [],
   workspaceBinding: { workspacePath: "/fixture" },
   epoch: 1,
@@ -136,6 +137,7 @@ test("board excludes foreign messages, executions and approval requests", () => 
         epoch: 1,
         sequence: 1,
         sender: "user",
+        kind: "chat",
         text: "private A history",
         mentions: [],
         memberId: null,

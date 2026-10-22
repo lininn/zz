@@ -24,10 +24,11 @@ for (const missing of ["bridge", "method"] as const) {
           throw new Error("probe must not create prompt");
         },
       });
-      const probe =
-        missing === "bridge"
-          ? await runtime.probeMember(detail.group.workspaceBinding!, detail.resolvedMembers[0]!)
-          : detail.runtimeAvailability?.[0];
+      // 详情投影的 cached 探测首轮返回 null 并在后台刷新；这里直接走准入路径验证探测结果。
+      const probe = await runtime.probeMember(
+        detail.group.workspaceBinding!,
+        detail.resolvedMembers[0]!,
+      );
       assert.equal(probe?.available, false);
       assert.match(probe?.reason ?? "", /crew\/runtime.*unavailable/);
       assert.equal(f.calls.length, 0);
@@ -41,22 +42,24 @@ for (const missing of ["bridge", "method"] as const) {
 test("preflight hides unknown exception details and preserves genuine runtime verdicts", async () => {
   const f = await externalCrewFixture();
   try {
+    const detail = await f.service.get({ groupId: f.group.groupId });
+    const binding = detail.group.workspaceBinding!;
+    const member = detail.resolvedMembers[0]!;
+    // 不使用 cached 投影，直接验证准入路径对真实探测结果的处理。
+    const probe = () => f.runtime.probeMember!(binding, member);
     const original = f.f.agent.crewRuntime!;
     f.f.agent.crewRuntime = async () => {
       throw new Error("private process diagnostic");
     };
-    const failed = await f.service.get({ groupId: f.group.groupId });
-    assert.equal(failed.runtimeAvailability?.[0]?.reason, "crew.runtimeUnavailable");
+    const failed = await probe();
+    assert.equal(failed?.reason, "crew.runtimeUnavailable");
     f.f.agent.crewRuntime = original;
     f.available(false);
-    const unavailable = await f.service.get({ groupId: f.group.groupId });
-    assert.equal(unavailable.runtimeAvailability?.[0]?.reason, "binary_not_found");
-    assert.equal(unavailable.runtimeAvailability?.[0]?.available, false);
+    const unavailable = await probe();
+    assert.equal(unavailable?.reason, "binary_not_found");
+    assert.equal(unavailable?.available, false);
     f.available(true);
-    assert.equal(
-      (await f.service.get({ groupId: f.group.groupId })).runtimeAvailability?.[0]?.available,
-      true,
-    );
+    assert.equal((await probe())?.available, true);
     assert.ok(f.calls.every((command) => command.action === "probe"));
     assert.equal(f.tasks.size, 0);
   } finally {

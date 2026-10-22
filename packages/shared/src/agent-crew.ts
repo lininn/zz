@@ -9,6 +9,8 @@ import { modelSelectionSchema } from "./model-selection.js";
 
 const id = z.string().trim().min(1).max(256);
 const name = z.string().trim().min(1).max(200);
+export const CREW_ANNOUNCEMENT_MAX_CHARS = 2000;
+const announcement = z.string().trim().max(CREW_ANNOUNCEMENT_MAX_CHARS);
 const runtime = z.union([z.literal("zcode"), crewExternalRuntimeIdSchema]);
 const accessMode = z.enum(["read", "write"]);
 const toolAllowlist = z.array(z.string().trim().min(1).max(200)).max(128);
@@ -83,6 +85,8 @@ export const crewGroupSchema = z
     ...crewRelaySettings,
     groupId: id,
     name,
+    /** 每次派工都注入提示词的群级说明；不属于角色指令，也不参与权限判断。 */
+    announcement: announcement.default(""),
     members: z.array(crewMemberSchema).max(32),
     workspaceBinding: crewWorkspaceBindingSchema.nullable(),
     epoch: z.number().int().nonnegative(),
@@ -118,6 +122,8 @@ export const crewMessageSchema = z
     epoch: z.number().int().nonnegative(),
     sequence: z.number().int().positive(),
     sender: z.enum(["user", "member"]),
+    /** event 是不可发言的状态行（审批/熔断等），不进入成员上下文。 */
+    kind: z.enum(["chat", "event"]).default("chat"),
     memberId: id.nullable(),
     text: z.string().max(64000),
     mentions: z.array(id).max(1),
@@ -155,6 +161,8 @@ export const crewGroupDetailSchema = z
     conversations: z.array(crewConversationSchema),
     resolvedMembers: z.array(crewResolvedMemberSchema).max(32),
     messages: z.array(crewMessageSchema),
+    /** 审批/熔断等状态行；与聊天消息分开，避免污染成员上下文和消息计数。 */
+    events: z.array(crewMessageSchema).optional(),
     executions: z.array(crewExecutionSchema),
     runtimeAvailability: z.array(crewRuntimeProbeSchema.extend({ memberId: id })).optional(),
   })
@@ -168,6 +176,7 @@ export const crewCreateParamsSchema = z
   .object({
     ...crewRelaySettings,
     name,
+    announcement: announcement.optional(),
     members: z.array(crewMemberInputSchema).max(32),
   })
   .strict();
@@ -176,6 +185,7 @@ export const crewUpdateParamsSchema = z
     ...crewRelaySettings,
     groupId: id,
     name: name.optional(),
+    announcement: announcement.optional(),
     members: z.array(crewMemberInputSchema).max(32).optional(),
   })
   .strict();

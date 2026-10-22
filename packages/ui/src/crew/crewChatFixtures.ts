@@ -37,6 +37,7 @@ export function chatMessage(overrides: Partial<CrewMessage> = {}): CrewMessage {
     epoch: 1,
     sequence: 1,
     sender: "user",
+    kind: "chat",
     memberId: null,
     text: "Inspect this",
     mentions: ["a"],
@@ -59,6 +60,7 @@ export function chatDetail(overrides: Partial<CrewGroupDetail> = {}): CrewGroupD
     group: {
       groupId: "group",
       name: "Review crew",
+      announcement: "",
       epoch: 1,
       status: "idle",
       members: [{ memberId: "a", agentId: "agent-a" }],

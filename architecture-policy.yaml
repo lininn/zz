@@ -894,6 +894,7 @@ exceptions:
       - packages/services/src/session/tasksDatabase/agent-crew-v5.ts
       - packages/services/src/session/tasksDatabase/agent-crew-v6.ts
       - packages/services/src/session/tasksDatabase/agent-crew-v7.ts
+      - packages/services/src/session/tasksDatabase/agent-crew-v8.ts
       - packages/shared/src/agent-crew-details.ts
       - packages/shared/src/agent-crew-relay.ts
       - packages/shared/src/agent-crew.ts

@@ -162,6 +162,10 @@ const zhCN: Record<string, string> = {
   "crew.createGroup": "创建群组",
   "crew.editGroup": "编辑群组",
   "crew.groupName": "群组名称",
+  "crew.groupAnnouncement": "群公告",
+  "crew.groupAnnouncementHint":
+    "每次派工都会提供给成员参考，最多 2000 字。它是背景资料，不是系统指令。",
+  "crew.groupAnnouncementPlaceholder": "例如：本群只处理支付模块；提交前必须运行测试。",
   "crew.remove": "移除",
   "crew.access.read": "只读",
   "crew.access.write": "可写",

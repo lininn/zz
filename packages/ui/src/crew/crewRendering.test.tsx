@@ -41,6 +41,7 @@ const member: CrewResolvedMember = {
 const group: CrewGroup = {
   groupId: "crew-a",
   name: "Review crew",
+  announcement: "",
   members: [{ memberId: member.memberId, agentId: member.agentId }],
   workspaceBinding: null,
   epoch: 0,
@@ -99,7 +100,10 @@ test("group editor selects existing catalog references without inline agent edit
       </TabStoreProvider>
     </ZCodeIntlProvider>,
   );
-  assert.doesNotMatch(html, /Inspect evidence|crew-runtime-select|<textarea/);
+  assert.doesNotMatch(html, /Inspect evidence|crew-runtime-select/);
+  // 群公告是编辑器唯一的内联文本域；不得出现 Agent 角色/提示词编辑。
+  assert.match(html, /Crew announcement/);
+  assert.equal(html.match(/<textarea/g)?.length, 1);
   assert.match(html, /version-1/);
   assert.match(html, /role="checkbox"/);
   assert.match(html, /ZCode/);
@@ -120,6 +124,7 @@ test("board renders user content as text and exposes persisted execution status"
         epoch: 0,
         sequence: 1,
         sender: "user",
+        kind: "chat",
         memberId: null,
         text: "<script>@Reviewer</script>",
         mentions: [],

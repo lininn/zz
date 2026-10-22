@@ -37,6 +37,7 @@ export function readMessage(row: Row): CrewMessage {
     epoch: row.epoch,
     sequence: row.sequence,
     sender: row.sender,
+    kind: row.kind,
     memberId: row.member_id,
     text: row.text,
     mentions: JSON.parse(String(row.mentions_json)),
@@ -48,7 +49,7 @@ export function readMessage(row: Row): CrewMessage {
 export function readCrewContext(db: DatabaseSync, execution: CrewExecution): CrewMessage[] {
   // SQL 先裁剪行数，避免长群板在执行入口全量读取；只取当前纪元且不读取未来消息。
   const rows = db
-    .prepare(`SELECT * FROM agent_crew_messages WHERE group_id=? AND conversation_id=? AND epoch=? AND sequence<=
+    .prepare(`SELECT * FROM agent_crew_messages WHERE group_id=? AND conversation_id=? AND epoch=? AND kind='chat' AND sequence<=
       (SELECT sequence FROM agent_crew_messages WHERE group_id=? AND conversation_id=? AND message_id=?) ORDER BY sequence DESC LIMIT 24`)
     .all(
       execution.groupId,

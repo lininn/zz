@@ -58,6 +58,7 @@ const detail: CrewGroupDetail = {
   group: {
     groupId: "crew-a",
     name: "Crew",
+    announcement: "",
     members: [{ memberId: member.memberId, agentId: member.agentId }],
     epoch: 1,
     status: "idle",

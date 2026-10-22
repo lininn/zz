@@ -160,3 +160,31 @@ test("elapsed time uses terminal timestamps and a supplied live clock, clamped a
   assert.equal(crewExecutionElapsed({ ...chatExecution, status: "running" }, 3602000), "1:00:01");
   assert.equal(crewExecutionElapsed({ ...chatExecution, status: "queued" }, 500), "0:00");
 });
+
+test("event rows render as anonymous system entries interleaved by sequence", () => {
+  const entries = crewChatEntries(
+    chatDetail({
+      messages: [chatMessage({ messageId: "request", sequence: 1, mentions: ["a"] })],
+      events: [
+        chatMessage({
+          messageId: "event",
+          sequence: 2,
+          kind: "event",
+          sender: "member",
+          memberId: "a",
+          mentions: [],
+          text: "error.relayHopLimit",
+        }),
+      ],
+      executions: [],
+    }),
+  );
+  assert.equal(entries.length, 2);
+  const event = entries[1];
+  assert.equal(event?.kind, "messages");
+  if (event?.kind !== "messages") return;
+  assert.equal(event.sender.kind, "system");
+  assert.equal(event.sender.memberId, null);
+  assert.equal(event.sender.name, null);
+  assert.equal(event.messages[0]?.message.kind, "event");
+});
