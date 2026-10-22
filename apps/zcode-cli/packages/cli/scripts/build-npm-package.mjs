@@ -82,6 +82,8 @@ async function writeStagedManifest() {
     description: source.description,
     license: source.license,
     repository: source.repository,
+    homepage: source.homepage,
+    bugs: source.bugs,
     bin: source.bin,
     files: ["dist", "README.md"],
     type: source.type,

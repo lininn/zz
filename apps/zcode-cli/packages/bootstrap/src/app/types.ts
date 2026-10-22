@@ -1,5 +1,5 @@
 
-import type { CrewRuntimeCommand, CrewRuntimeReply, ZCodeToolExecResource, BackgroundBashOutputResult } from "@zcode/shared";
+import type { CrewRuntimeCommand, CrewRuntimeReply } from "@zcode/shared";
 import type { AiSdkModelAdapter } from "@zcode/adapters/model";
 import type {
   AgentTelemetryRuntimeOwner,
@@ -113,7 +113,6 @@ import type {
   ExternalRuntimeTaskSummary,
 } from "./external-runtime.js";
 import type { SessionTranscriptMessage } from "../session-transcript.js";
-import type { NodeReplBrowserBroker } from "./node-repl-browser-broker.js";
 import type { ProviderRegistryModelSource } from "./provider-registry-model-runtime.js";
 import type { WorkspaceHookReviewCommandResult } from "./workspace-hook-review-controller.js";
 export type { ZCodeModelOption } from "@zcode/shared";

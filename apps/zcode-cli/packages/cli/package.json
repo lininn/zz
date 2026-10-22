@@ -1,11 +1,15 @@
 {
   "name": "@lininn/zz",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI coding assistant CLI — zz command",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zai-org/ZCode.git"
+    "url": "git+https://github.com/lininn/zz.git"
+  },
+  "homepage": "https://github.com/lininn/zz#readme",
+  "bugs": {
+    "url": "https://github.com/lininn/zz/issues"
   },
   "bin": {
     "zz": "./dist/zcode.cjs"

@@ -1,4 +1,3 @@
-import { createConfig } from "@zcode/adapters/config";
 import type { McpElicitationPort, McpNotificationPort } from "@zcode/contracts";
 import { createExternalRuntimeFacade, resolveOuterSandboxReady } from "./app/external-runtime.js";
 import { getCliStorageRoot } from "./app/paths.js";
