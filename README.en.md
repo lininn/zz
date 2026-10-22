@@ -1,9 +1,10 @@
-# ZCode
+# zz
 
 <div align="center">
-  <img src="public/logo/icons/1024x1024.png" alt="ZCode" width="128" height="128" />
+  <img src="public/logo/icons/1024x1024.png" alt="zz" width="128" height="128" />
 </div>
 <p align="center">
+  <a href="https://pc.d-1.top"><strong>Try online</strong></a> ·
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">Feishu community</a> ·
   <a href="https://discord.gg/z9aBcQXZQ3">Discord</a>
 </p>
@@ -11,7 +12,32 @@
   <a href="README.md">简体中文</a> | English
 </p>
 
-ZCode is an AI coding workspace with desktop, browser, and terminal interfaces. This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
+zz is an AI coding workspace built on ZCode, with desktop, browser, and terminal interfaces. This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
+
+> **Try online**: open **[pc.d-1.top](https://pc.d-1.top)** to manage zz from your browser, no installation required.
+>
+> **Invitation code**: follow the WeChat official account **"html5开发分享"** and reply "邀请码" to receive one.
+
+## Feature preview
+
+| Home / multi-project workspace | Crew collaboration (multi-agent relay) |
+| :---: | :---: |
+| ![zz home](docs/images/zz/home.jpeg) | ![zz crew collaboration](docs/images/zz/crew.jpeg) |
+
+- **Multi-project workspace**: manage projects, tasks, and conversations across local and remote workspaces.
+- **Crew collaboration**: multiple agents work by role with automatic relay, approvals, and recovery.
+- **Automations and plugins**: scheduled tasks, plugin marketplace, UI Plugins, and Gen UI.
+- **One workspace, three clients**: desktop, browser, and terminal CLI share the same Agent and data.
+
+## Quick start
+
+```bash
+npm install -g @lininn/zz
+zz            # terminal TUI
+zz --web      # local Web
+```
+
+Or use [pc.d-1.top](https://pc.d-1.top) directly in the browser with no local installation.
 
 ## Updates
 

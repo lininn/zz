@@ -1,9 +1,10 @@
-# ZCode
+# zz
 
 <div align="center">
-  <img src="public/logo/icons/1024x1024.png" alt="ZCode" width="128" height="128" />
+  <img src="public/logo/icons/1024x1024.png" alt="zz" width="128" height="128" />
 </div>
 <p align="center">
+  <a href="https://pc.d-1.top"><strong>在线体验</strong></a> ·
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">飞书社群</a> ·
   <a href="https://discord.gg/z9aBcQXZQ3">Discord</a>
 </p>
@@ -11,7 +12,32 @@
   简体中文 | <a href="README.en.md">English</a>
 </p>
 
-ZCode 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
+zz 是基于 ZCode 的 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
+
+> **在线体验**：浏览器打开 **[pc.d-1.top](https://pc.d-1.top)**，无需安装即可在云端管控 zz。
+>
+> **邀请码**：关注微信公众号 **「html5开发分享」**，回复「邀请码」领取。
+
+## 功能预览
+
+| 首页 / 多项目工作区 | 群组协作（多 Agent 接力） |
+| :---: | :---: |
+| ![zz 首页](docs/images/zz/home.jpeg) | ![zz 群组协作](docs/images/zz/crew.jpeg) |
+
+- **多项目工作区**：项目、任务、会话集中管理，支持本地与远程工作区。
+- **群组协作**：多个 Agent 按角色分工，支持自动接力、审批与恢复。
+- **自动化与插件**：定时任务、插件市场、UI Plugin 与 Gen UI。
+- **三端统一**：桌面端、浏览器、终端 CLI 共享同一套 Agent 与数据。
+
+## 快速开始
+
+```bash
+npm install -g @lininn/zz
+zz            # 终端 TUI
+zz --web      # 本地 Web
+```
+
+也可以直接访问 [pc.d-1.top](https://pc.d-1.top) 在线使用，无需本地安装。
 
 ## 更新
 
