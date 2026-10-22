@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import {
   createLocalServices,
+  createTopicResourcePeers,
   getAppConfigDir,
   resolveDefaultZCodeAgentCommand,
 } from "@zcode/services/node";
@@ -20,6 +21,7 @@ async function main(): Promise<void> {
   const host = process.env["ZCODE_SERVER_HOST"]?.trim() || process.env["HOST"]?.trim() || undefined;
   const staticRoot = process.env["ZCODE_WEB_STATIC_ROOT"]?.trim() || undefined;
   const authToken = process.env["ZCODE_SERVER_AUTH_TOKEN"]?.trim() || undefined;
+  const topicResourcePeers = createTopicResourcePeers();
   const services = createLocalServices({
     ...(process.argv.includes("--agent-source")
       ? {
@@ -29,11 +31,13 @@ async function main(): Promise<void> {
           ),
         }
       : {}),
+    topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
     zcodeBuiltinProviderConfigFilePath,
     providerProvisioningTargetEnabled: Boolean(authToken),
   });
 
   createHttpServer(services, port, {
+    topicResourcePeers,
     ...(host ? { host } : {}),
     ...(staticRoot ? { staticRoot, spaFallback: true } : {}),
     ...(authToken ? { authToken, authRequired: true } : {}),
