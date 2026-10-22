@@ -886,3 +886,65 @@ exceptions:
       - packages/ui/src/settings/DynamicWorkflowModeSetting.tsx
       - packages/ui/src/store/dynamicWorkflowAvailabilityStore.ts
     reason: Admitted upstream files edited only to let the user's dynamic workflow mode choice always win and keep the settings row visible; adopting packages/shared/src and packages/ui/src needs a separate module boundary refactor.
+  - id: fork-crew-unmanaged-new-files
+    rule: unmanaged-new-file
+    paths:
+      - packages/services/src/crew/
+      - packages/services/src/session/tasksDatabase/agent-crew-v4.ts
+      - packages/services/src/session/tasksDatabase/agent-crew-v5.ts
+      - packages/services/src/session/tasksDatabase/agent-crew-v6.ts
+      - packages/services/src/session/tasksDatabase/agent-crew-v7.ts
+      - packages/shared/src/agent-crew-details.ts
+      - packages/shared/src/agent-crew-relay.ts
+      - packages/shared/src/agent-crew.ts
+      - packages/shared/src/crew-external-runtime.ts
+      - packages/ui/src/crew/
+      - packages/ui/src/hooks/crewCacheScope.ts
+      - packages/ui/src/hooks/crewRequestScope.ts
+      - packages/ui/src/hooks/useCrew.ts
+      - packages/ui/src/hooks/useCrewAgentCatalog.ts
+      - packages/ui/src/hooks/useCrewAgentModels.ts
+      - packages/ui/src/hooks/useCrewExecutionDetail.ts
+      - packages/ui/src/hooks/useCrewHomeNavigation.ts
+      - packages/ui/src/hooks/useCrewTaskTimeline.ts
+      - packages/ui/src/hooks/useCrewText.ts
+      - packages/ui/src/hooks/useCrewWorkspaceOptions.ts
+      - packages/ui/src/lib/foregroundRequest.ts
+      - packages/ui/src/mentions/providers/crewMentionProvider.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/crew-runtime.ts
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/crew-runtime.ts
+      - apps/zcode-cli/packages/core/src/runtime-task/crew-runtime-events.ts
+      - apps/zcode-cli/packages/cli/src/command-center/handlers/delegate.ts
+      - apps/zcode-cli/packages/core/src/runtime-task/delegate-args.ts
+    reason: Fork-only Crew feature (agent groups, relay, lease and execution UI) landed before the current architecture gate; adopting crew, hooks and runtime-task directories as managed modules needs a separate boundary refactor.
+  - id: fork-external-runtime-unmanaged-new-files
+    rule: unmanaged-new-file
+    paths:
+      - apps/zcode-cli/packages/adapters/src/exec/external-runtime/
+      - apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0023-external-runtime-queue.ts
+      - apps/zcode-cli/packages/adapters/src/storage/session-store/migrations/0024-external-runtime-native-session.ts
+      - apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/external-runtime-queue.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/external-runtime.ts
+      - apps/zcode-cli/packages/contracts/src/interfaces/external-runtime-queue.port.ts
+      - apps/zcode-cli/packages/contracts/src/interfaces/external-runtime.port.ts
+      - apps/zcode-cli/packages/core/src/runtime-task/external-runtime-coordinator.ts
+      - apps/zcode-cli/packages/core/src/runtime-task/external-runtime-service.ts
+    reason: Fork-only external CLI runtime adapters (claude/codex/opencode) and their queue; adopting the exec and runtime-task directories as managed modules needs a separate boundary refactor.
+  - id: fork-web-config-unmanaged-new-files
+    rule: unmanaged-new-file
+    paths:
+      - apps/zcode-cli/packages/cli/src/web-command.ts
+      - apps/zcode-cli/packages/cli/src/web-config/
+    reason: Fork-only local model provider configuration page (`--web-config`); the CLI package is still legacy-unmanaged, so adopting the web-config directory needs a separate boundary refactor.
+  - id: fork-provider-model-discovery-unmanaged-new-files
+    rule: unmanaged-new-file
+    paths:
+      - packages/services/src/model-provider/providerModelDiscovery.ts
+      - packages/shared/src/provider-model-discovery.ts
+    reason: Fork-only provider /models discovery shared by the configuration page and CLI; adopting the model-provider and shared packages needs a separate boundary refactor.
+  - id: fork-server-npm-packaging-unmanaged-files
+    rule: unmanaged-new-file
+    paths:
+      - packages/server/src/developmentAgentCommand.ts
+      - packages/server/tsup.npm.config.ts
+    reason: Fork npm packaging entry and development agent command; packages/server is legacy-unmanaged and adopting it needs a separate boundary refactor.
