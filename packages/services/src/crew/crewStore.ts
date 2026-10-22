@@ -50,7 +50,7 @@ export class CrewStore {
         // 每个 CrewService / AgentCatalog 实例都新开连接并初始化，迁移 runner 的
         // BEGIN IMMEDIATE 会取写锁；群详情轮询也在取写锁，并发初始化因此互相等待，
         // 5s 超时后抛 "database is locked"。账本只读确认已应用就跳过，不再每次抢写锁。
-        if (!areTasksDatabaseMigrationsApplied(db)) runTasksDatabaseMigrations(db);
+        if (!areTasksDatabaseMigrationsApplied(db)) await runTasksDatabaseMigrations(db);
         this.connection = db;
       } catch (error) {
         db.close();

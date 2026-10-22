@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import {
-  createLocalServices,
+  createServerHostServices,
   createTopicResourcePeers,
   getAppConfigDir,
   resolveDefaultZCodeAgentCommand,
@@ -10,7 +10,7 @@ import {
   materializeBundledZCodeBuiltinProviderConfig,
   readBundledZCodeBuiltinProviderConfig,
 } from "./bundledZCodeBuiltinProviderConfig.js";
-import { createHttpServer } from "./http.js";
+import { createHttpServer, resolveHttpServerId } from "./http.js";
 
 async function main(): Promise<void> {
   const zcodeBuiltinProviderConfigFilePath = await materializeBundledZCodeBuiltinProviderConfig({
@@ -22,21 +22,28 @@ async function main(): Promise<void> {
   const staticRoot = process.env["ZCODE_WEB_STATIC_ROOT"]?.trim() || undefined;
   const authToken = process.env["ZCODE_SERVER_AUTH_TOKEN"]?.trim() || undefined;
   const topicResourcePeers = createTopicResourcePeers();
-  const services = createLocalServices({
-    ...(process.argv.includes("--agent-source")
-      ? {
-          zcodeAgentCommandResolver: createDevelopmentAgentCommandResolver(
-            resolve(import.meta.dirname, "../../.."),
-            resolveDefaultZCodeAgentCommand,
-          ),
-        }
-      : {}),
-    topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
-    zcodeBuiltinProviderConfigFilePath,
-    providerProvisioningTargetEnabled: Boolean(authToken),
-  });
+  const serverId = resolveHttpServerId();
+  const { services, workspaceIdentityMapper, migrationFailedPathCount } =
+    await createServerHostServices({
+      ...(process.argv.includes("--agent-source")
+        ? {
+            zcodeAgentCommandResolver: createDevelopmentAgentCommandResolver(
+              resolve(import.meta.dirname, "../../.."),
+              resolveDefaultZCodeAgentCommand,
+            ),
+          }
+        : {}),
+      topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
+      sourceServerId: serverId,
+      zcodeBuiltinProviderConfigFilePath,
+      providerProvisioningTargetEnabled: Boolean(authToken),
+    });
 
   createHttpServer(services, port, {
+    serverId,
+    workspaceIdentityMapper,
+    migrationFailedPathCount,
+    virtualProjects: true,
     topicResourcePeers,
     ...(host ? { host } : {}),
     ...(staticRoot ? { staticRoot, spaFallback: true } : {}),

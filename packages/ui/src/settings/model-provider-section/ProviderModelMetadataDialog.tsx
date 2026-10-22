@@ -11,10 +11,7 @@ import {
 } from "@/components/ui/dialog.js";
 import { Input } from "@/components/ui/input.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useProviderModelDiscovery } from "@/settings/model-provider-section/useProviderModelDiscovery.js";
-import { ProviderModelIdField } from "@/settings/model-provider-section/ProviderModelIdField.js";
 import type { ModelConfigObject } from "@zcode/provider";
-import type { ProviderModelDiscoveryApiType } from "@zcode/shared";
 import type {
   ProviderModelDraftValues,
   ProviderModelDraftCommitResult,
@@ -34,6 +31,7 @@ import {
   ModelConfigRestoreButton,
 } from "@/settings/model-provider-section/ProviderModelMetadataDialogActions.js";
 import { modelEditorControlStyle } from "@/settings/model-provider-section/modelEditorControlStyle.js";
+import { cn } from "@/components/lib/utils.js";
 import {
   ModelConfigHelp,
   ModelConfigInputLabel,
@@ -63,7 +61,6 @@ export function ProviderModelMetadataDialog({
   saving = false,
   modelDefaultsLoaded = false,
   onModelIdBlur,
-  modelDiscovery,
 }: {
   mode?: "add" | "edit";
   open: boolean;
@@ -82,23 +79,9 @@ export function ProviderModelMetadataDialog({
   saving?: boolean;
   modelDefaultsLoaded?: boolean;
   onModelIdBlur?: () => void;
-  /**
-   * 「获取模型」要读的上游连接信息。宿主表单里的现填值（而非已落盘配置），
-   * 缺省时不渲染按钮——拿不到 baseUrl 就无从拉取。
-   */
-  modelDiscovery?: {
-    apiType: ProviderModelDiscoveryApiType;
-    baseUrl: string;
-    apiKey?: string;
-  };
 }) {
   const { intl } = useZCodeIntl();
   const [validationAttempt, setValidationAttempt] = useState(0);
-  const {
-    models: discoveredModels,
-    pending: discovering,
-    fetchModels: handleFetchModels,
-  } = useProviderModelDiscovery(modelDiscovery);
   const commit = async () => {
     const result = await onCommit();
     if (!result) setValidationAttempt((value) => value + 1);
@@ -191,21 +174,30 @@ export function ProviderModelMetadataDialog({
         >
           <ModelSettingsGroup group="basic">
             <div data-model-identity-row="true" className="flex flex-col gap-4">
-              <ProviderModelIdField
-                value={draft.idValue}
-                readOnly={modelIdReadOnly}
-                autoFocus={shouldFocusModelIdInput}
-                options={discoveredModels}
-                discovering={discovering}
-                canFetch={Boolean(modelDiscovery)}
-                saving={saving}
-                onValueChange={(idValue) => onDraftChange({ idValue })}
-                onFetchModels={() => void handleFetchModels()}
-                onBlur={onModelIdBlur}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                onKeyDown={handleTechnicalInputKeyDown}
-              />
+              <div className="min-w-0 flex-1">
+                <label className="mb-1 block text-ui-base text-foreground-subtle">
+                  {intl.formatMessage({ id: "settings.modelProvider.modelId" })}
+                </label>
+                <Input
+                  {...TECHNICAL_INPUT_ATTRIBUTES}
+                  type="text"
+                  autoFocus={shouldFocusModelIdInput}
+                  size="lg"
+                  className={cn("font-mono", modelEditorControlStyle(false))}
+                  readOnly={modelIdReadOnly}
+                  value={draft.idValue}
+                  placeholder={intl.formatMessage({
+                    id: "settings.modelProvider.modelId",
+                  })}
+                  onChange={(event) => {
+                    onDraftChange({ idValue: event.target.value });
+                  }}
+                  onBlur={onModelIdBlur}
+                  onCompositionStart={handleCompositionStart}
+                  onCompositionEnd={handleCompositionEnd}
+                  onKeyDown={handleTechnicalInputKeyDown}
+                />
+              </div>
             </div>
           </ModelSettingsGroup>
           <ModelSettingsGroup group="tokens">

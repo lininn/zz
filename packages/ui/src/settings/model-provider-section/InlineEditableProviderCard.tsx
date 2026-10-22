@@ -856,12 +856,6 @@ export function InlineEditableProviderCard({
           onAddModel={handleAddModel}
           onReorderModelIds={onReorderModelIds ? handleReorderModelIds : undefined}
           settingsRevision={settingsRevision ?? 0}
-          // 读表单里现填的连接信息，而不是已落盘配置：用户刚改完 baseUrl 就想拉模型。
-          modelDiscovery={{
-            apiType: apiFormat,
-            baseUrl: baseUrlValue,
-            ...(apiKeyValue ? { apiKey: apiKeyValue } : {}),
-          }}
         />
       </div>
     </div>

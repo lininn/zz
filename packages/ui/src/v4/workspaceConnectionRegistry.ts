@@ -94,6 +94,17 @@ export function buildWorkspaceConnectionKey(scope: WorkspaceConnectionScope): st
   return `${scope.remoteSessionId ?? LOCAL_WORKSPACE_CONNECTION_ENDPOINT} ${workspaceKey}`;
 }
 
+/** 群组时间线只读探测：不建连接、不加引用；仅当既有连接仍新鲜时读取其 layer。 */
+export function peekWorkspaceConversationStore(
+  scope: WorkspaceConnectionScope,
+  agentService: WorkspaceConnectionAgentService,
+  sessionId: string,
+) {
+  const entry = registry.get(buildWorkspaceConnectionKey(scope));
+  if (!entry || entry.stale || entry.agentService !== agentService) return null;
+  return entry.layer.peek(sessionId);
+}
+
 function disposeEntry(entry: RegistryEntry): void {
   if (entry.keepWarmTimer !== null) {
     clearTimeout(entry.keepWarmTimer);
@@ -261,17 +272,6 @@ export function acquireWorkspaceConnection(
       releaseEntry(entry);
     },
   };
-}
-
-/** 只查当前 service/endpoint 的现成投影，绝不新建连接、恢复 session 或激活旧代理。 */
-export function peekWorkspaceConversationStore(
-  scope: WorkspaceConnectionScope,
-  agentService: WorkspaceConnectionAgentService,
-  sessionId: string,
-) {
-  const entry = registry.get(buildWorkspaceConnectionKey(scope));
-  if (!entry || entry.stale || entry.agentService !== agentService) return null;
-  return entry.layer.peek(sessionId);
 }
 
 /** 仅测试/诊断用：当前注册的连接条目数（不含已换代失效、待存量租约释放的旧条目）。 */

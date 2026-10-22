@@ -88,7 +88,7 @@ export class CrewLeaseStore {
       const db = new DatabaseSync(this.path);
       try {
         db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL");
-        runTasksDatabaseMigrations(db);
+        await runTasksDatabaseMigrations(db);
         this.db = db;
       } catch (error) {
         db.close();

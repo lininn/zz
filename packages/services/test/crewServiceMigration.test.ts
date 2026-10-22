@@ -7,15 +7,15 @@ import {
   runTasksDatabaseMigrations,
 } from "../src/session/tasksDatabase/migrations.js";
 
-test("v7 is checksum-tracked and installs the exact shared workspace lease contract", () => {
+test("v7 is checksum-tracked and installs the exact shared workspace lease contract", async () => {
   const db = new DatabaseSync(":memory:");
   try {
     db.exec("PRAGMA foreign_keys=ON");
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
     const ledger = db.prepare("SELECT id,checksum FROM tasks_schema_migration ORDER BY id").all();
     assert.equal(ledger.at(-1)?.id, "0007_agent_crew_relay");
-    assert.equal(ledger.length, 7);
+    assert.equal(ledger.length, 9);
     assert.ok(
       !db
         .prepare("PRAGMA table_info(agent_crew_groups)")
@@ -66,7 +66,7 @@ test("v7 is checksum-tracked and installs the exact shared workspace lease contr
       null,
       1,
     );
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.deepEqual(
       db.prepare("SELECT id,checksum FROM tasks_schema_migration ORDER BY id").all(),
       ledger,
@@ -75,18 +75,18 @@ test("v7 is checksum-tracked and installs the exact shared workspace lease contr
     db.prepare(
       "UPDATE tasks_schema_migration SET checksum='changed' WHERE id='0004_agent_crew'",
     ).run();
-    assert.throws(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
+    await assert.rejects(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
     assert.equal(db.isTransaction, false);
   } finally {
     db.close();
   }
 });
 
-test("v3 upgrade adds only Crew tables without rewriting historical ledger or unrelated rows", () => {
+test("v3 upgrade adds only Crew tables without rewriting historical ledger or unrelated rows", async () => {
   const db = new DatabaseSync(":memory:");
   try {
     db.exec("PRAGMA foreign_keys=ON");
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     // 降级夹具必须一并移除 v6 会话表，否则重放迁移会撞到残留表。
     db.exec(`DROP TABLE agent_crew_workspace_leases; DROP TABLE agent_crew_executions;
       DROP TABLE agent_crew_messages; DROP TABLE agent_crew_conversations; DROP TABLE agent_crew_members; DROP TABLE agent_crew_groups; DROP TABLE agent_crew_agents;
@@ -94,7 +94,7 @@ test("v3 upgrade adds only Crew tables without rewriting historical ledger or un
       INSERT INTO task_groups(group_id,title,created_at,updated_at) VALUES ('existing-group','keep',1,1);`);
     const before = db.prepare("SELECT * FROM tasks_schema_migration ORDER BY id").all();
     assert.equal(areTasksDatabaseMigrationsApplied(db), false);
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.deepEqual(
       db
         .prepare("SELECT * FROM tasks_schema_migration WHERE id<'0004_agent_crew' ORDER BY id")
@@ -111,11 +111,11 @@ test("v3 upgrade adds only Crew tables without rewriting historical ledger or un
   }
 });
 
-test("v4 extraction deduplicates equivalent definitions, splits conflicts and preserves historical execution bytes", () => {
+test("v4 extraction deduplicates equivalent definitions, splits conflicts and preserves historical execution bytes", async () => {
   const db = new DatabaseSync(":memory:");
   try {
     db.exec("PRAGMA foreign_keys=ON");
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     // 回到真实 v4：删除 v5/v6 ledger 与新表，保留旧 checksum 和审计断言。
     db.exec(`DROP TABLE agent_crew_executions; DROP TABLE agent_crew_messages;
       DROP TABLE agent_crew_conversations; DROP TABLE agent_crew_members; DROP TABLE agent_crew_groups; DROP TABLE agent_crew_agents;
@@ -153,7 +153,7 @@ test("v4 extraction deduplicates equivalent definitions, splits conflicts and pr
       "INSERT INTO agent_crew_executions VALUES('e','c','m','member',0,'queued',?,'{\"workspacePath\":\"/tmp\"}',NULL,NULL,1,1)",
     ).run(history);
     const ledger = db.prepare("SELECT * FROM tasks_schema_migration ORDER BY id").all();
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.equal(db.prepare("SELECT count(*) n FROM agent_crew_agents").get()?.n, 2);
     const refs = db
       .prepare("SELECT group_id,agent_id FROM agent_crew_members ORDER BY group_id")
@@ -180,7 +180,7 @@ test("v4 extraction deduplicates equivalent definitions, splits conflicts and pr
       ledger,
     );
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.equal(db.prepare("SELECT count(*) n FROM agent_crew_agents").get()?.n, 2);
   } finally {
     db.close();

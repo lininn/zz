@@ -34,10 +34,10 @@ const rows = (db: DatabaseSync, table: string) =>
     .all()
     .map((row) => ({ ...row }));
 
-function v6Fixture(path = ":memory:") {
+async function v6Fixture(path = ":memory:") {
   const db = new DatabaseSync(path);
   db.exec("PRAGMA foreign_keys=ON");
-  runTasksDatabaseMigrations(db);
+  await runTasksDatabaseMigrations(db);
   // 从冻结 SQL 重建真实 v6 表，不以删除新版列或伪造最新账本代替旧库升级。
   db.exec(`DROP TABLE agent_crew_executions; DROP TABLE agent_crew_messages;
     DROP TABLE agent_crew_conversations; DROP TABLE agent_crew_members;
@@ -101,8 +101,8 @@ function v6Fixture(path = ":memory:") {
   return db;
 }
 
-test("v7 preserves real v6 rows and all six frozen checksums, backfills roots and defaults", () => {
-  const db = v6Fixture();
+test("v7 preserves real v6 rows and all six frozen checksums, backfills roots and defaults", async () => {
+  const db = await v6Fixture();
   try {
     const tables = [
       "agent_crew_groups",
@@ -118,9 +118,9 @@ test("v7 preserves real v6 rows and all six frozen checksums, backfills roots an
     const before = tables.map((table) => rows(db, table));
     assert.equal(areTasksDatabaseMigrationsApplied(db), false);
     const migration = { kind: "upgrade" as const, executedCount: 0, committedCount: 0 };
-    runTasksDatabaseMigrations(db, { migration });
-    assert.equal(migration.executedCount, 1);
-    assert.equal(migration.committedCount, 1);
+    await runTasksDatabaseMigrations(db, { migration });
+    assert.equal(migration.executedCount, 3);
+    assert.equal(migration.committedCount, 3);
     for (const [i, table] of tables.entries()) {
       const oldRows = before[i]!;
       const keys = Object.keys(oldRows[0]!);
@@ -144,24 +144,24 @@ test("v7 preserves real v6 rows and all six frozen checksums, backfills roots an
       assert.equal(execution.relay_budget_minutes_snapshot, 30);
     }
     const after = rows(db, "tasks_schema_migration");
-    assert.equal(after.length, 7);
+    assert.equal(after.length, 9);
     assert.equal(after.at(-1)?.id, VERSION);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.deepEqual(rows(db, "tasks_schema_migration"), after);
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
     db.prepare("UPDATE tasks_schema_migration SET checksum='tampered' WHERE id=?").run(VERSION);
-    assert.throws(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
+    await assert.rejects(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
     assert.equal(db.isTransaction, false);
   } finally {
     db.close();
   }
 });
 
-test("v7 enforces relay bounds and objective uniqueness only within one root/member scope", () => {
-  const db = v6Fixture();
+test("v7 enforces relay bounds and objective uniqueness only within one root/member scope", async () => {
+  const db = await v6Fixture();
   try {
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     for (const [column, value] of [
       ["relay_mode", "invalid"],
       ["relay_auto_hops", -1],
@@ -229,13 +229,13 @@ test("v7 enforces relay bounds and objective uniqueness only within one root/mem
   }
 });
 
-test("failed v7 rolls back columns and root backfill before a clean retry", () => {
-  const db = v6Fixture();
+test("failed v7 rolls back columns and root backfill before a clean retry", async () => {
+  const db = await v6Fixture();
   try {
     const before = rows(db, "agent_crew_executions");
     const ledger = rows(db, "tasks_schema_migration");
     db.exec("CREATE INDEX idx_agent_crew_relay_objective ON task_groups(title)");
-    assert.throws(() => runTasksDatabaseMigrations(db), /already exists/);
+    await assert.rejects(() => runTasksDatabaseMigrations(db), /already exists/);
     assert.equal(db.isTransaction, false);
     assert.deepEqual(rows(db, "agent_crew_executions"), before);
     assert.deepEqual(rows(db, "tasks_schema_migration"), ledger);
@@ -247,7 +247,7 @@ test("failed v7 rolls back columns and root backfill before a clean retry", () =
       false,
     );
     db.exec("DROP INDEX idx_agent_crew_relay_objective");
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
   } finally {
     db.close();
@@ -257,7 +257,7 @@ test("failed v7 rolls back columns and root backfill before a clean retry", () =
 async function storeFixture() {
   const directory = await mkdtemp(join(tmpdir(), "crew-relay-migration-"));
   const path = join(directory, "tasks.sqlite");
-  const old = v6Fixture(path);
+  const old = await v6Fixture(path);
   old.close();
   const store = new CrewStore(path);
   await store.initialize();

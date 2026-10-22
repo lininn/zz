@@ -15,10 +15,10 @@ const rows = (db: DatabaseSync, table: string) =>
     .all()
     .map((row) => ({ ...row }));
 
-function v5Fixture() {
+async function v5Fixture() {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys=ON");
-  runTasksDatabaseMigrations(db);
+  await await runTasksDatabaseMigrations(db);
   // 用冻结 v4/v5 创建真实旧表，沿用旧账本，不把缺列的新版表冒充迁移输入。
   db.exec(`DROP TABLE agent_crew_executions; DROP TABLE agent_crew_messages;
     DROP TABLE agent_crew_conversations; DROP TABLE agent_crew_members;
@@ -73,8 +73,8 @@ function v5Fixture() {
   return db;
 }
 
-test("v6 preserves every v5 message/execution field and installs one default even for empty groups", () => {
-  const db = v5Fixture();
+test("v6 preserves every v5 message/execution field and installs one default even for empty groups", async () => {
+  const db = await v5Fixture();
   try {
     const messages = rows(db, "agent_crew_messages");
     const executions = rows(db, "agent_crew_executions");
@@ -82,7 +82,7 @@ test("v6 preserves every v5 message/execution field and installs one default eve
     const groups = rows(db, "agent_crew_groups");
     const ledger = rows(db, "tasks_schema_migration");
     assert.equal(areTasksDatabaseMigrationsApplied(db), false);
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     const originalColumns = (table: string, original: Record<string, unknown>[]) =>
       rows(db, table).map((row) => {
         assert.equal(row.conversation_id, row.group_id);
@@ -97,7 +97,7 @@ test("v6 preserves every v5 message/execution field and installs one default eve
       ),
       groups,
     );
-    assert.deepEqual(rows(db, "tasks_schema_migration").slice(0, 5), ledger);
+    assert.deepEqual(rows(db, "tasks_schema_migration").slice(0, ledger.length), ledger);
     assert.deepEqual(
       rows(db, "agent_crew_conversations"),
       groups.map((group) => ({
@@ -113,8 +113,8 @@ test("v6 preserves every v5 message/execution field and installs one default eve
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
     const after = rows(db, "tasks_schema_migration");
     assert.equal(after.at(-1)?.id, "0007_agent_crew_relay");
-    assert.equal(after.length, 7);
-    runTasksDatabaseMigrations(db);
+    assert.equal(after.length, 9);
+    await runTasksDatabaseMigrations(db);
     assert.deepEqual(rows(db, "tasks_schema_migration"), after);
     assert.equal(rows(db, "agent_crew_conversations").length, 3);
     assert.equal(rows(db, "agent_crew_messages").length, messages.length);
@@ -123,10 +123,10 @@ test("v6 preserves every v5 message/execution field and installs one default eve
   }
 });
 
-test("v6 composite keys permit same message id per conversation and reject foreign ownership", () => {
-  const db = v5Fixture();
+test("v6 composite keys permit same message id per conversation and reject foreign ownership", async () => {
+  const db = await v5Fixture();
   try {
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     db.exec("INSERT INTO agent_crew_conversations VALUES('a','second','Task',0,100,100)");
     db.exec(`INSERT INTO agent_crew_messages
       SELECT group_id,'second',message_id,epoch,sequence,sender,member_id,text,mentions_json,NULL,created_at
@@ -160,13 +160,13 @@ test("v6 composite keys permit same message id per conversation and reject forei
   }
 });
 
-test("failed v6 rolls back the default backfill and preserves old tables/ledger before retry", () => {
-  const db = v5Fixture();
+test("failed v6 rolls back the default backfill and preserves old tables/ledger before retry", async () => {
+  const db = await v5Fixture();
   try {
     const before = rows(db, "agent_crew_messages");
     const ledger = rows(db, "tasks_schema_migration");
     db.exec("CREATE TABLE agent_crew_messages_v6 (blocked TEXT)");
-    assert.throws(() => runTasksDatabaseMigrations(db), /already exists/);
+    await assert.rejects(() => runTasksDatabaseMigrations(db), /already exists/);
     assert.equal(db.isTransaction, false);
     assert.deepEqual(rows(db, "agent_crew_messages"), before);
     assert.deepEqual(rows(db, "tasks_schema_migration"), ledger);
@@ -175,10 +175,10 @@ test("failed v6 rolls back the default backfill and preserves old tables/ledger 
       undefined,
     );
     db.exec("DROP TABLE agent_crew_messages_v6");
-    runTasksDatabaseMigrations(db);
+    await runTasksDatabaseMigrations(db);
     assert.equal(areTasksDatabaseMigrationsApplied(db), true);
     db.prepare("UPDATE tasks_schema_migration SET checksum='tampered' WHERE id=?").run(VERSION);
-    assert.throws(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
+    await assert.rejects(() => runTasksDatabaseMigrations(db), /checksum mismatch/);
     assert.equal(rows(db, "agent_crew_messages").length, before.length);
   } finally {
     db.close();
