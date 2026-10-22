@@ -13,6 +13,13 @@ describe("server tsup config", () => {
     expect(JSON.parse(SERVER_HTTP_DEFINES.__ZCODE_ENV__)).toBe(expected.environment);
   });
 
+  it("keeps the node: protocol in the npm server bundle", () => {
+    // tsup 默认 removeNodeProtocol:true，会把 node:sqlite 改写成第三方包 "sqlite"，
+    // 导致 `zz --web` 在安装后报 Cannot find package 'sqlite'。
+    const npmConfig = readFileSync(resolve(import.meta.dirname, "../tsup.npm.config.ts"), "utf8");
+    expect(npmConfig).toMatch(/removeNodeProtocol:\s*false/);
+  });
+
   it("externalizes CommonJS multipart dependencies for the ESM HTTP dev bundle", () => {
     expect(SERVER_HTTP_EXTERNAL_DEPENDENCIES).toEqual(
       expect.arrayContaining([

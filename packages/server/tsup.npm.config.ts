@@ -11,6 +11,8 @@ export default defineConfig({
   outDir: "dist-npm",
   format: "esm",
   platform: "node",
+  // node:sqlite 只有带前缀的内置入口；tsup 去掉 node: 会错误加载第三方 sqlite 包。
+  removeNodeProtocol: false,
   target: "node22",
   bundle: true,
   splitting: false,
