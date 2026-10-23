@@ -28,10 +28,36 @@ async function resolvePushBase(root, head, remote) {
   return (await git(root, ["merge-base", remote, head])).toString().trim();
 }
 
+// 首次推送没有 remote SHA；按 docs/ci/affected-unit-test-baseline.md 约定的顺序回退。
+// 上游拆分后 origin/staging 可能不存在，此时仍应以远端默认分支作为比较基线；
+// 全部候选都缺失才严格报错，避免把"分支名变了"误判成"无法比较"。
+const firstPushBaseCandidates = [
+  "origin/staging",
+  "origin/HEAD",
+  "origin/main",
+  "origin/master",
+  "main",
+  "master",
+];
+
+async function optionalCommit(root, ref) {
+  try {
+    return (
+      await git(root, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`])
+    )
+      .toString()
+      .trim();
+  } catch {
+    return null;
+  }
+}
+
 async function firstPushBase(root, head) {
-  // 首次推送没有 remote SHA；只使用已确认的集成分支，缺失时严格报错，不猜测其他分支。
-  const staging = await commit(root, "origin/staging");
-  return (await git(root, ["merge-base", staging, head])).toString().trim();
+  for (const ref of firstPushBaseCandidates) {
+    const base = await optionalCommit(root, ref);
+    if (base) return (await git(root, ["merge-base", base, head])).toString().trim();
+  }
+  throw new Error(`无法解析首次推送基线：${firstPushBaseCandidates.join("、")} 均不存在`);
 }
 
 /** 只解析比较基线；改动文件与关联测试全部由 Vitest 官方选择。 */
