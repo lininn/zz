@@ -77,6 +77,29 @@ export function crewSendParams(
   };
 }
 
+/**
+ * 群聊输入框此前只有「发送」按钮能提交（textarea 的 Enter 只换行），用户打完字
+ * 按回车看起来毫无反应。这里与普通会话对齐：裸 Enter 发送，Shift/Ctrl/Cmd+Enter 换行。
+ * IME 组合态的 Enter 是候选确认，@ 选择器打开时的 Enter 归 picker，都不能当成发送。
+ */
+export function crewEnterSubmits(params: {
+  key: string;
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  isComposing?: boolean;
+  pickerOpen?: boolean;
+}): boolean {
+  return (
+    params.key === "Enter" &&
+    !params.shiftKey &&
+    !params.ctrlKey &&
+    !params.metaKey &&
+    !params.isComposing &&
+    !params.pickerOpen
+  );
+}
+
 /** 只有用户直接键入独立 @ 才弹出 picker；粘贴/正文扫描绝不产生结构化派工。 */
 export function opensCrewMentionPicker(
   key: string,

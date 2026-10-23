@@ -22,6 +22,7 @@ import { CrewRuntimeStatus } from "./CrewRuntimeStatus.js";
 import { useCrewText } from "@/hooks/useCrewText.js";
 import { mapCrewMembersToMentionItems } from "@/mentions/providers/crewMentionProvider.js";
 import {
+  crewEnterSubmits,
   crewSendParams,
   editCrewDraft,
   newCrewDraft,
@@ -181,19 +182,38 @@ export function CrewComposer({
         placeholder={t("messagePlaceholder")}
         className="min-h-24 text-mobile-input-safe md:text-ui-base"
         onKeyDown={(event) => {
+          const composing = event.nativeEvent.isComposing;
           if (
             !pending &&
             !unavailable &&
             candidates.length &&
             opensCrewMentionPicker(
               event.key,
-              event.nativeEvent.isComposing,
+              composing,
               draft.text,
               event.currentTarget.selectionStart,
             )
           ) {
             event.preventDefault();
             setPickerOpen(true);
+            return;
+          }
+          // 与普通会话一致：裸 Enter 发送，Shift/Ctrl/Cmd+Enter 换行。
+          if (
+            params &&
+            !pending &&
+            !unavailable &&
+            crewEnterSubmits({
+              key: event.key,
+              shiftKey: event.shiftKey,
+              ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey,
+              isComposing: composing,
+              pickerOpen,
+            })
+          ) {
+            event.preventDefault();
+            void submit();
           }
         }}
         onChange={(event) =>
