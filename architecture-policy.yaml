@@ -949,3 +949,8 @@ exceptions:
       - packages/server/src/developmentAgentCommand.ts
       - packages/server/tsup.npm.config.ts
     reason: Fork npm packaging entry and development agent command; packages/server is legacy-unmanaged and adopting it needs a separate boundary refactor.
+  - id: fork-web-relay-control-unmanaged-files
+    rule: unmanaged-new-file
+    paths:
+      - packages/ui/src/WebRelayControlCard.tsx
+    reason: Fork-only self-hosted relay control card restored after the upstream merge dropped it; packages/ui is legacy-unmanaged, so adopting the directory needs a separate boundary refactor.

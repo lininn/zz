@@ -21,9 +21,10 @@ afterEach(() => {
 });
 
 describe("settingsPageConfig", () => {
-  it("only exposes remote device management on desktop", () => {
+  it("keeps remote device management desktop-only while exposing remote control on web", () => {
     expect(isSettingsSectionAvailable("remoteDevices", true)).toBe(true);
     expect(isSettingsSectionAvailable("remoteDevices", false)).toBe(false);
+    expect(isSettingsSectionAvailable("remoteControl", false)).toBe(true);
     expect(isSettingsSectionAvailable("general", false)).toBe(true);
   });
   it("按设置页分组与顺序展示公开分区", async () => {
@@ -43,12 +44,13 @@ describe("settingsPageConfig", () => {
           "modelProvider",
           "browser",
           "remoteDevices",
+          "remoteControl",
           "shortcuts",
         ],
       },
       {
         id: "agentCapabilities",
-        sections: ["memory", "subagents", "plugin", "mcp", "skill", "commands", "hooks"],
+        sections: ["memory", "subagents", "plugin", "mcp", "skill", "commands", "crew", "hooks"],
       },
       { id: "dataAndStats", sections: ["usage", "archives"] },
     ]);
@@ -62,9 +64,11 @@ describe("settingsPageConfig", () => {
       "mcp",
       "skill",
       "commands",
+      "crew",
       "hooks",
       "browser",
       "remoteDevices",
+      "remoteControl",
       "shortcuts",
       "usage",
       "archives",
@@ -101,6 +105,7 @@ describe("settingsPageConfig", () => {
       "browser",
       "remoteDevices",
       "computerUse",
+      "remoteControl",
       "shortcuts",
     ]);
     expect(

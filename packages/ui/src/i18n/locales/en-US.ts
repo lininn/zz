@@ -2775,6 +2775,23 @@ const enUS: Record<string, string> = {
   "webRemoteControl.authRequired.description":
     "Sign in to control this computer from your phone. Use the same account on both devices.",
   "webRemoteControl.authRequired.login": "Sign in",
+  "webRemoteControl.relay.title": "Browser remote control (self-hosted relay)",
+  "webRemoteControl.relay.description":
+    "Sign in with your blog account on this machine to enable remote control. Only the bound account can control this computer from the relay URL in a mobile browser.",
+  "webRemoteControl.relay.status.bound": "Remote control enabled, bound account:",
+  "webRemoteControl.relay.status.unbound":
+    "Remote control disabled: sign in with your blog account to enable",
+  "webRemoteControl.relay.unavailable":
+    "Local connector is not running (remote control can only be configured on this machine)",
+  "webRemoteControl.relay.unreachable": "Cannot reach the local connector",
+  "webRemoteControl.relay.relayOnline": "Relay",
+  "webRemoteControl.relay.online": "online",
+  "webRemoteControl.relay.offline": "reconnecting",
+  "webRemoteControl.relay.username": "Blog account",
+  "webRemoteControl.relay.password": "Password",
+  "webRemoteControl.relay.login": "Sign in and enable remote control",
+  "webRemoteControl.relay.logout": "Disable remote control",
+  "webRemoteControl.relay.loginFailed": "Sign-in failed",
   "webRemoteControl.title": "Mobile remote control",
   "webRemoteControl.description":
     "Scan the QR code or open the link on your phone to control this workspace.",
@@ -2913,6 +2930,7 @@ const enUS: Record<string, string> = {
     "Current v{current} · Minimum compatible v{minimum} · Remote tasks pause briefly during the update",
   "settings.source.managementTitle": "Remote connections",
   "settings.remoteDevicesTitle": "Remote devices",
+  "settings.remoteControl.title": "Remote Control",
   "settings.remoteDevicesDescription":
     "Manage your servers, WSL distributions, and Docker containers.",
   "settings.source.newConnection": "New connection",
