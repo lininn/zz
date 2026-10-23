@@ -394,9 +394,15 @@ export class CrewService implements ICrewService {
         this.executionStore.finish(current, "cancelled", error.message);
       else if (
         error instanceof Error &&
-        ["crew.workspaceBusy", "crew.runtimeUnavailable", "crew.promptTooLarge"].includes(
-          error.message,
-        )
+        [
+          "crew.workspaceBusy",
+          "crew.runtimeUnavailable",
+          "crew.promptTooLarge",
+          // 预留任务归属在创建会话之前被拒，确定没有投递任何输入；不能留成恢复态。
+          "project.remote-project-required",
+          "project.cwd-not-in-roots",
+          "project.remote-single-root-required",
+        ].includes(error.message)
       )
         this.executionStore.finish(current, "failed", error.message);
       else this.executionStore.recovery(current);

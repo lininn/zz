@@ -84,6 +84,8 @@ export function createCrewRuntime(options: {
   agent: IZCodeAgentService;
   sessions: IZCodeSessionService;
   admission: CrewWriteAdmission;
+  /** 群组只绑目录；远端持库宿主要求任务有项目归属，派工前按唯一 root 解析。 */
+  resolveProjectId?: (binding: CrewWorkspaceBinding) => Promise<string | null> | string | null;
 }): CrewRuntimePort {
   const { agent, sessions, admission } = options;
   const active = new Map<string, { cancelled: boolean }>();
@@ -125,6 +127,9 @@ export function createCrewRuntime(options: {
       if (input.member.runtime !== "zcode") return external.execute(input);
       const binding = input.execution.workspaceBinding;
       await preflight(binding);
+      // 远端持库宿主在 reserveCreatedTask 阶段强制要求项目归属；群组绑定只有目录，
+      // 这里解析唯一 root 对应的项目并透传给 createSession，解析不到仍按原策略报错。
+      const projectId = (await options.resolveProjectId?.(binding)) ?? null;
       const taskId = `agent_crew_${input.execution.executionId}`;
       const target = { ...binding, sessionId: taskId };
       const state = { cancelled: false };
@@ -134,6 +139,7 @@ export function createCrewRuntime(options: {
         await input.onTaskCreated(taskId);
         const snapshot = await sessions.createSession({
           ...target,
+          ...(projectId ? { projectId } : {}),
           // 群组成员是用户在派工那一刻已经批准过的执行者，不该再为每条命令二次确认：
           // 派工本身就是授权动作，中途弹权限框会把无人值守的接力链卡死在等待上。
           // 边界仍在：read 成员由下面的 toolAllowlist 收敛到只读工具面，

@@ -2513,6 +2513,17 @@ export function createLocalServices(options: {
       agent: zcodeAgentService,
       sessions: zcodeSessionService,
       admission: crewAdmission,
+      // 群组只记录共享目录；这里按同 Host 唯一 root 归位到项目，供 reserveCreatedTask
+      // 在远端持库宿主上满足项目归属约束。多个项目共用同一 root 时保持原样失败。
+      resolveProjectId: async (binding) => {
+        const repository = await taskIndexRepo.getProjectRepository();
+        const matches = repository
+          .readTree({ includeTasks: false })
+          .projects.filter((project) =>
+            project.roots.some((root) => root.rootPath === binding.workspacePath),
+          );
+        return matches.length === 1 ? matches[0]!.id : null;
+      },
     }),
   });
   const gitCommitMessageGenerator = new GitCommitMessageGenerator({
