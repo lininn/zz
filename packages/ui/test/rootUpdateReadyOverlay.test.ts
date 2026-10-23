@@ -148,10 +148,12 @@ vi.mock("@/lib/fileDisplay.js", () => ({
 vi.mock("@/lib/rootStartupGate.js", () => ({
   isProviderStartupSyncPending: () => false,
   shouldEnableProviderAvailabilityLoginEntryGuard: ({
+    isDesktop,
     isWebRemoteControlRoot,
   }: {
+    isDesktop?: boolean;
     isWebRemoteControlRoot: boolean;
-  }) => !isWebRemoteControlRoot,
+  }) => isDesktop === true && !isWebRemoteControlRoot,
   shouldResolveProviderStartupState: ({
     isWebRemoteControlRoot,
     providerStartupSyncPending,

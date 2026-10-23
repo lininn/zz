@@ -316,12 +316,13 @@ export class ProjectRepository implements ProjectRepositoryContract {
     });
   }
 
-  deleteProject(id: string): void {
-    this.db
+  deleteProject(id: string, hostId = this.ownerHostId ?? "local"): number {
+    const result = this.db
       .prepare(
         "UPDATE projects SET deleted=1,deleted_at=?,updated_at=? WHERE project_id=? AND deleted=0 AND host_id=?",
       )
-      .run(Date.now(), Date.now(), id, this.ownerHostId ?? "local");
+      .run(Date.now(), Date.now(), id, hostId);
+    return Number(result.changes);
   }
 
   moveTask(input: { task: ProjectTaskRef; projectId: string; addMissingRoot?: boolean }): void {

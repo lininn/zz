@@ -579,6 +579,7 @@ function RootInner({
   const isWebRemoteControlRoot = Boolean(webRemoteControlWorkspaceSwitcher);
   const providerAvailabilityLoginEntryGuardEnabled =
     shouldEnableProviderAvailabilityLoginEntryGuard({
+      isDesktop,
       isWebRemoteControlRoot,
     });
   const { startupCheckCompleted: providerAvailabilityStartupCheckCompleted } =
@@ -1244,6 +1245,12 @@ function RootInner({
   const handleOpenLoginEntry = useCallback(() => {
     setWelcomeScreenOpenReason("manual-login");
   }, []);
+  // 本地 Web 不再用登录页阻塞首屏；侧栏“连接使用”直达模型设置，避免用户找不到配置入口。
+  const handleOpenModelProviderSettings = useCallback(() => {
+    setPendingSettingsSectionIntent("modelProvider");
+    tabStoreApi.getState().openSettingsTab();
+  }, [tabStoreApi]);
+  const handleConnectEntry = isDesktop ? handleOpenLoginEntry : handleOpenModelProviderSettings;
   const handleWelcomeScreenComplete = useCallback(
     async (reason: LoginCompleteReason) => {
       await refreshAppSettings();
@@ -1618,7 +1625,7 @@ function RootInner({
                 allowRemoteWorkspace={allowRemoteWorkspace}
                 handleBackFromSettings={handleBackFromSettings}
                 handleLogout={user ? handleLogout : undefined}
-                onLogin={!user ? handleOpenLoginEntry : undefined}
+                onLogin={!user ? handleConnectEntry : undefined}
                 user={user}
                 reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
                 remoteWorkspaceRecoveryByWorkspaceKey={remoteWorkspaceRecoveryByWorkspaceKey}

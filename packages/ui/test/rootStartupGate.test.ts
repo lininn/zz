@@ -88,6 +88,26 @@ describe("Root startup gate", () => {
     ).toBe(false);
   });
 
+  it("本地 Web 直接进入首页，桌面端仍运行登录入口守卫", () => {
+    expect(
+      shouldEnableProviderAvailabilityLoginEntryGuard({
+        isDesktop: false,
+        isWebRemoteControlRoot: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldEnableProviderAvailabilityLoginEntryGuard({
+        isWebRemoteControlRoot: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldEnableProviderAvailabilityLoginEntryGuard({
+        isDesktop: true,
+        isWebRemoteControlRoot: false,
+      }),
+    ).toBe(true);
+  });
+
   it("Web 远控 Root 不把 provider 启动态作为 workspace 注入门禁", () => {
     expect(
       shouldResolveProviderStartupState({

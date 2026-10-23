@@ -96,7 +96,8 @@ export interface ProjectRepositoryContract {
     includeTasks?: boolean;
   }): ProjectTree;
   saveProject(input: SaveProjectInput): VirtualProject;
-  deleteProject(id: string): void;
+  /** 显式 host 允许清理 source-server / 远端镜像行；返回是否实际标记删除。 */
+  deleteProject(id: string, hostId?: string): number;
   /** 在写事务内只为空项目初始化 root；并发编辑已添加的目录优先。 */
   initializeProjectRoot(id: string, path: string): VirtualProject;
   moveTask(input: { task: ProjectTaskRef; projectId: string; addMissingRoot?: boolean }): void;

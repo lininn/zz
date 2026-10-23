@@ -168,9 +168,31 @@ export function createProjectService(options: {
       return result;
     },
     async deleteProject(id, hostId) {
-      const remote = await route(hostId);
-      if (remote) return remote.deleteProject(id);
-      (await options.repository()).deleteProject(id);
+      const owner = options.ownerHostId ?? "local";
+      if (hostId && hostId !== owner) {
+        let remote: IProjectService | null = null;
+        try {
+          remote = await route(hostId);
+        } catch (error) {
+          // 远端暂时不可达时，本地 projects 表里的镜像行仍要持久隐藏，否则重启后复活。
+          if (!(await options.repository()).deleteProject(id, hostId)) throw error;
+          await changed();
+          return;
+        }
+        if (remote) {
+          try {
+            await remote.deleteProject(id);
+            await changed();
+            return;
+          } catch (error) {
+            // 远端删除失败：只在确有本地镜像行时兜底隐藏，不吞掉真正无行可删的错误。
+            if (!(await options.repository()).deleteProject(id, hostId)) throw error;
+            await changed();
+            return;
+          }
+        }
+      }
+      (await options.repository()).deleteProject(id, hostId ?? owner);
       await changed();
     },
     async moveTask(input) {
