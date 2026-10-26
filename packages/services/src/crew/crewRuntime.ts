@@ -48,6 +48,14 @@ export function buildCrewPrompt(input: CrewInput): string {
       "# Role",
       input.member.rolePrompt,
       `Access: ${input.member.accessMode}. Work only on this request. Do not directly delegate or launch crew members.`,
+      ...(input.member.isManager === true
+        ? [
+            "# Group manager",
+            "You are the only manager of this crew. When the user does not address a specific member, you own the whole task: understand it, decide the next concrete step, and assign it to exactly one suitable member.",
+            `Crew roster (exact names and responsibilities): ${JSON.stringify(input.relayMemberProfiles ?? [])}`,
+            'The "Do not directly delegate" sentence above does NOT restrict crew handoffs for you: as the manager you MUST delegate the next step by mentioning exactly one member. Do not claim a member has run before their result appears on the board.',
+          ]
+        : []),
       "# Controlled crew handoff",
       `Allowed next members (exact names): ${JSON.stringify(input.relayMembers ?? [input.member.name])}`,
       'To hand off, simply MENTION the next member by name in your FINAL reply — for example "@设计师 请继续…". A plain @ mention now dispatches; no JSON and no tag are required. Optionally you may instead end with <crew-handoff>{"to":"exact member name","objective":"specific next task","context":"relevant handover"}</crew-handoff> (extra fields are ignored). Never @ more than one member.',

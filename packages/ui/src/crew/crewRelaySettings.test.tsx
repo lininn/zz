@@ -18,6 +18,7 @@ const imports = {
   "@/components/ui/input.js": { Input: "input" },
   "@/components/ui/label.js": { Label: "label" },
   "@/components/ui/checkbox.js": { Checkbox: "input" },
+  "@/components/ui/textarea.js": { Textarea: "textarea" },
   "@/components/ui/select.js": {
     Select: "select",
     SelectContent: "div",
@@ -88,6 +89,7 @@ test("actual group form saves defaults/new settings and preserves paused state; 
     { ...saved[0] },
     {
       name: group.name,
+      announcement: "",
       members: [],
       relayMode: "auto",
       relayAutoHops: 2,

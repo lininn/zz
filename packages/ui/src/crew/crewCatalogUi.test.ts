@@ -111,6 +111,31 @@ test("catalog downgrade reconciles an old write override so group rename can sav
   );
 });
 
+test("group payload rejects more than one manager member", () => {
+  const managerA = { ...agent, agentId: "manager-a", isManager: true };
+  const managerB = { ...agent, agentId: "manager-b", isManager: true };
+  assert.throws(
+    () =>
+      crewGroupInput(
+        "Two managers",
+        [{ agentId: managerA.agentId }, { agentId: managerB.agentId }],
+        [managerA, managerB],
+      ),
+    /multipleManagers/,
+  );
+  assert.deepEqual(
+    crewGroupInput("One manager", [{ agentId: managerA.agentId }], [managerA, managerB]).members,
+    [{ agentId: managerA.agentId }],
+  );
+});
+
+test("agent update carries the manager flag and defaults new agents to non-manager", () => {
+  const { agentId, configVersion: _v, createdAt: _c, updatedAt: _u, ...input } = agent;
+  assert.equal(input.isManager, undefined);
+  assert.equal(crewAgentUpdate(agentId, { ...input, isManager: true }).isManager, true);
+  assert.equal(crewAgentUpdate(agentId, { ...input, isManager: false }).isManager, false);
+});
+
 test("editor reconciliation follows current catalog without widening existing read or inherited policies", () => {
   const writer = { ...agent, accessMode: "write" as const };
   const inherited = [{ agentId: agent.agentId }];

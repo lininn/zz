@@ -3,6 +3,7 @@ import { readExecution, readMessage, readCrewContext } from "./crewStoreRows.js"
 export { readExecution } from "./crewStoreRows.js";
 import { CrewConversationStore } from "./crewConversationStore.js";
 import { assertCrewCapabilities, resolveCrewMember } from "./agentCatalogStore.js";
+import { seedBuiltinManager } from "./crewBuiltinManager.js";
 import {
   crewGroupSchema,
   type CrewExecution,
@@ -51,6 +52,8 @@ export class CrewStore {
         // BEGIN IMMEDIATE 会取写锁；群详情轮询也在取写锁，并发初始化因此互相等待，
         // 5s 超时后抛 "database is locked"。账本只读确认已应用就跳过，不再每次抢写锁。
         if (!areTasksDatabaseMigrationsApplied(db)) await runTasksDatabaseMigrations(db);
+        // 首次初始化即内置管理者；INSERT OR IGNORE 不会覆盖用户后来的编辑。
+        seedBuiltinManager(db);
         this.connection = db;
       } catch (error) {
         db.close();
@@ -267,7 +270,10 @@ export class CrewStore {
     // 成员仅持有引用；同事务校验后替换，失败整体回滚，不改历史执行快照。
     if (new Set(members.map((member) => member.agentId)).size !== members.length)
       throw new Error("crew.duplicateAgentId");
-    members.forEach((member) => resolveCrewMember(this.db, member, true));
+    const resolved = members.map((member) => resolveCrewMember(this.db, member, true));
+    // 每个群组最多一名管理者；新增/编辑成员都在同一写锁内校验。
+    if (resolved.filter((member) => member.isManager === true).length > 1)
+      throw new Error("crew.multipleManagers");
     this.db.prepare("DELETE FROM agent_crew_members WHERE group_id=?").run(groupId);
     const insert = this.db.prepare(
       "INSERT INTO agent_crew_members(group_id,member_id,sort_order,agent_id,access_mode) VALUES(?,?,?,?,?)",
@@ -318,10 +324,17 @@ export class CrewStore {
         .get(input.groupId, conversation.conversationId, input.messageId);
       return { message, execution: row ? readExecution(row) : null };
     }
-    const member = input.mentions.length
+    const explicit = input.mentions.length
       ? group.members.find((m) => m.memberId === input.mentions[0])
       : undefined;
-    if (input.mentions.length && !member) throw new Error("crew.memberNotFound");
+    if (input.mentions.length && !explicit) throw new Error("crew.memberNotFound");
+    // 用户没有指定成员时，由群内唯一的管理者统筹。未绑定目录仍只发群板，
+    // 与普通“仅发群板”语义一致。
+    const manager =
+      !input.mentions.length && group.workspaceBinding
+        ? group.members.find((candidate) => this.resolve(candidate).isManager === true)
+        : undefined;
+    const member = explicit ?? manager;
     if (member && !group.workspaceBinding) throw new Error("crew.workspaceUnbound");
     if (member && conversation.status === "recovery_required")
       throw new Error("crew.recoveryRequired");

@@ -1,4 +1,5 @@
 import {
+  CREW_BUILTIN_MANAGER_AGENT_ID,
   crewAgentSchema,
   crewAgentListParamsSchema,
   crewAgentGetParamsSchema,
@@ -82,6 +83,21 @@ export class CrewAgentCatalogService implements ICrewAgentCatalogService {
       if (agent.modelSelection === undefined) delete agent.modelSelection;
       if (agent.toolAllowlist === undefined) delete agent.toolAllowlist;
       assertCrewCapabilities(agent);
+      // 把已加入群组的 Agent 改成管理者时，不能与该群组现有管理者并存。
+      if (agent.isManager === true) {
+        const conflict = this.store.db
+          .prepare(
+            `SELECT 1 FROM agent_crew_members mine
+             JOIN agent_crew_members other
+               ON other.group_id = mine.group_id AND other.agent_id <> mine.agent_id
+             JOIN agent_crew_agents peer ON peer.agent_id = other.agent_id
+             WHERE mine.agent_id = ?
+               AND json_extract(peer.definition_json, '$.isManager') = 1
+             LIMIT 1`,
+          )
+          .get(agentId);
+        if (conflict) throw new Error("crew.multipleManagers");
+      }
       this.store.db
         .prepare("UPDATE agent_crew_agents SET definition_json=? WHERE agent_id=?")
         .run(JSON.stringify(agent), agentId);
@@ -93,6 +109,8 @@ export class CrewAgentCatalogService implements ICrewAgentCatalogService {
     await this.ready();
     this.store.transaction(() => {
       readCrewAgent(this.store.db, agentId);
+      // 内置管理者是首次安装的统筹角色，允许编辑但不能删除，否则会被下次启动重新写入。
+      if (agentId === CREW_BUILTIN_MANAGER_AGENT_ID) throw new Error("crew.builtinAgentLocked");
       if (
         this.store.db
           .prepare("SELECT 1 FROM agent_crew_members WHERE agent_id=? LIMIT 1")

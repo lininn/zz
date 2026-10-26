@@ -330,12 +330,17 @@ export class CrewService implements ICrewService {
         this.executionStore.recovery(execution);
         return;
       }
+      const resolvedMembers = group.members.map((member) => this.store.resolve(member));
       const result = await this.options.runtime.execute({
         group,
         member: execution.memberSnapshot,
         execution,
         messages: this.store.context(execution),
-        relayMembers: group.members.map((member) => this.store.resolve(member).name),
+        relayMembers: resolvedMembers.map((member) => member.name),
+        relayMemberProfiles: resolvedMembers.map((member) => ({
+          name: member.name,
+          role: member.rolePrompt.slice(0, 500),
+        })),
         // 候选仅来自本对话；跨对话复用已完成 task 会把 vendor 原生历史带入新任务。
         resumeTaskId:
           this.store

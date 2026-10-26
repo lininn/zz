@@ -50,6 +50,12 @@ export function CrewGroupEditor({
   const [relay, setRelay] = useState(() => crewRelaySettings(group));
   const [error, setError] = useState<string | null>(null);
   const effectiveMembers = crewEditorMembers(members, agents);
+  const managerAgentIds = new Set(
+    agents.filter((agent) => agent.isManager === true).map((agent) => agent.agentId),
+  );
+  const selectedManagers = effectiveMembers.filter((member) =>
+    managerAgentIds.has(member.agentId),
+  ).length;
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (pending || catalogUnavailable) return;
@@ -113,6 +119,8 @@ export function CrewGroupEditor({
         <div className="grid min-w-0 gap-3 sm:grid-cols-2" aria-label={t("chooseAgents")}>
           {agents.map((agent, index) => {
             const member = effectiveMembers.find((item) => item.agentId === agent.agentId);
+            const managerLimitReached =
+              agent.isManager === true && !member && selectedManagers >= 1;
             return (
               <section
                 key={agent.agentId}
@@ -122,7 +130,12 @@ export function CrewGroupEditor({
                   <Checkbox
                     id={`${id}-agent-${index}`}
                     checked={Boolean(member)}
-                    disabled={pending || catalogUnavailable || (!member && members.length >= 32)}
+                    disabled={
+                      pending ||
+                      catalogUnavailable ||
+                      managerLimitReached ||
+                      (!member && members.length >= 32)
+                    }
                     onCheckedChange={() =>
                       setMembers((current) => toggleCrewAgent(current, agent.agentId))
                     }
@@ -130,6 +143,11 @@ export function CrewGroupEditor({
                   <Label htmlFor={`${id}-agent-${index}`} className="break-words">
                     {agent.name}
                   </Label>
+                  {agent.isManager === true && (
+                    <span className="rounded-full border border-border px-2 py-0.5 text-ui-xs text-muted-foreground">
+                      {t("managerBadge")}
+                    </span>
+                  )}
                 </div>
                 <p className="text-ui-caption text-muted-foreground">
                   {t(`runtime.${agent.runtime}`)}
@@ -185,6 +203,9 @@ export function CrewGroupEditor({
             );
           })}
         </div>
+        {selectedManagers > 0 && (
+          <p className="text-ui-caption text-muted-foreground">{t("groupManagerHint")}</p>
+        )}
         {members
           .filter((member) => !agents.some((agent) => agent.agentId === member.agentId))
           .map((member) => (

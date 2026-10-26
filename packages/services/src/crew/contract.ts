@@ -83,6 +83,8 @@ export interface CrewRuntimePort {
     messages: CrewMessage[];
     /** 当前目录解析的可交接成员名；只作协议声明，不放入角色权限。 */
     relayMembers?: string[];
+    /** 管理者统筹用的成员名 + 职责摘要；普通成员不读取。 */
+    relayMemberProfiles?: { name: string; role: string }[];
     onTaskCreated(taskId: string): Promise<void>;
     resumeTaskId?: string;
   }): Promise<{ taskId: string; text: string; status: "succeeded" | "failed" | "cancelled" }>;

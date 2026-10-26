@@ -70,7 +70,8 @@ test("catalog CRUD generates versions, supports explicit clears, and persists in
     } finally {
       await second.dispose();
     }
-    assert.equal((await f.catalog.list({})).length, 1);
+    // 首次初始化会内置一名管理者。
+    assert.equal((await f.catalog.list({})).length, 2);
     await f.catalog.delete({ agentId: f.agent.agentId });
     await assert.rejects(f.catalog.get({ agentId: f.agent.agentId }), /crew.agentNotFound/);
     await assert.rejects(
@@ -130,7 +131,8 @@ test("references are atomic, shared across groups, protected by FK, and independ
     const copy = await f.service.duplicate({ groupId: a.groupId });
     assert.equal(copy.members[0]?.agentId, ref.agentId);
     for (const group of [a, b, copy]) await f.service.delete({ groupId: group.groupId });
-    assert.equal((await f.catalog.list({})).length, 1);
+    // 首次初始化会内置一名管理者。
+    assert.equal((await f.catalog.list({})).length, 2);
     await f.catalog.delete(ref);
   } finally {
     await f.close();
@@ -279,7 +281,8 @@ test("catalog mutations roll back atomically on storage failure and close guards
       "DROP TRIGGER reject_agent; CREATE TRIGGER reject_agent BEFORE INSERT ON agent_crew_agents BEGIN SELECT RAISE(ABORT,'rejected'); END",
     );
     await assert.rejects(f.catalog.create(definition), /rejected/);
-    assert.equal((await f.catalog.list({})).length, 1);
+    // 首次初始化会内置一名管理者。
+    assert.equal((await f.catalog.list({})).length, 2);
     await f.catalog.dispose();
     await assert.rejects(f.catalog.list({}), /crew.serviceClosed/);
   } finally {

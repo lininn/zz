@@ -51,6 +51,7 @@ export function CrewComposer({
   const candidates = mapCrewMembersToMentionItems(resolvedMembers);
   const selected = candidates.find((item) => item.value === draft.memberId);
   const selectedMember = resolvedMembers.find((member) => member.memberId === draft.memberId);
+  const manager = resolvedMembers.find((member) => member.isManager === true);
   const params = crewSendParams(
     group.groupId,
     conversation.conversationId,
@@ -222,7 +223,15 @@ export function CrewComposer({
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="min-w-0 flex-1 text-ui-caption text-muted-foreground">
-          {t(unavailable ? "sendUnavailable" : selected ? "assignedHint" : "boardOnlyHint")}
+          {t(
+            unavailable
+              ? "sendUnavailable"
+              : selected
+                ? "assignedHint"
+                : manager
+                  ? "managerDispatchHint"
+                  : "boardOnlyHint",
+          )}
         </p>
         <Button type="submit" disabled={!params || pending || unavailable}>
           <Send className="size-4" />

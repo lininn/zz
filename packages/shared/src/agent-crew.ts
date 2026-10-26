@@ -10,6 +10,9 @@ import { modelSelectionSchema } from "./model-selection.js";
 const id = z.string().trim().min(1).max(256);
 const name = z.string().trim().min(1).max(200);
 export const CREW_ANNOUNCEMENT_MAX_CHARS = 2000;
+/** 首次初始化写入目录的内置管理者；每个群组最多引用一名管理者。 */
+export const CREW_BUILTIN_MANAGER_AGENT_ID = "crew-builtin-manager";
+export const CREW_BUILTIN_MANAGER_NAME = "管理者";
 const announcement = z.string().trim().max(CREW_ANNOUNCEMENT_MAX_CHARS);
 const runtime = z.union([z.literal("zcode"), crewExternalRuntimeIdSchema]);
 const accessMode = z.enum(["read", "write"]);
@@ -22,6 +25,8 @@ export const crewAgentInputSchema = z
     systemPrompt: z.string().max(32000),
     runtime,
     accessMode,
+    /** 缺省即非管理者；兼容没有该字段的历史定义。 */
+    isManager: z.boolean().optional(),
     modelSelection: modelSelectionSchema.optional(),
     toolAllowlist: toolAllowlist.optional(),
   })
@@ -61,6 +66,8 @@ export const crewResolvedMemberSchema = z
     rolePrompt: z.string().max(32000),
     runtime,
     accessMode,
+    /** 仅管理者为 true；旧执行快照没有该字段时按非管理者处理。 */
+    isManager: z.boolean().optional(),
     modelSelection: modelSelectionSchema.optional(),
     toolAllowlist: toolAllowlist.optional(),
   })
