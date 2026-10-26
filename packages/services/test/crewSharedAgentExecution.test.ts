@@ -85,7 +85,8 @@ test("both referencing crews execute the latest catalog definition while old aud
       assert.deepEqual(member.modelSelection, updated.modelSelection);
       assert.deepEqual(member.toolAllowlist, updated.toolAllowlist);
     }
-    assert.equal((await catalog.list({})).length, 1);
+    // 首次初始化会内置一名管理者。
+    assert.equal((await catalog.list({})).length, 2);
   } finally {
     await crew.dispose();
     await catalog.dispose();

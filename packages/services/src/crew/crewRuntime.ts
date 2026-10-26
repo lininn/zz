@@ -48,6 +48,14 @@ export function buildCrewPrompt(input: CrewInput): string {
       "# Role",
       input.member.rolePrompt,
       `Access: ${input.member.accessMode}. Work only on this request. Do not directly delegate or launch crew members.`,
+      ...(input.member.isManager === true
+        ? [
+            "# Group manager",
+            "You are the only manager of this crew. When the user does not address a specific member, you own the whole task: understand it, decide the next concrete step, and assign it to exactly one suitable member.",
+            `Crew roster (exact names and responsibilities): ${JSON.stringify(input.relayMemberProfiles ?? [])}`,
+            'The "Do not directly delegate" sentence above does NOT restrict crew handoffs for you: as the manager you MUST delegate the next step by mentioning exactly one member. Do not claim a member has run before their result appears on the board.',
+          ]
+        : []),
       "# Controlled crew handoff",
       `Allowed next members (exact names): ${JSON.stringify(input.relayMembers ?? [input.member.name])}`,
       'To hand off, simply MENTION the next member by name in your FINAL reply — for example "@设计师 请继续…". A plain @ mention now dispatches; no JSON and no tag are required. Optionally you may instead end with <crew-handoff>{"to":"exact member name","objective":"specific next task","context":"relevant handover"}</crew-handoff> (extra fields are ignored). Never @ more than one member.',
@@ -84,6 +92,8 @@ export function createCrewRuntime(options: {
   agent: IZCodeAgentService;
   sessions: IZCodeSessionService;
   admission: CrewWriteAdmission;
+  /** 群组只绑目录；远端持库宿主要求任务有项目归属，派工前按唯一 root 解析。 */
+  resolveProjectId?: (binding: CrewWorkspaceBinding) => Promise<string | null> | string | null;
 }): CrewRuntimePort {
   const { agent, sessions, admission } = options;
   const active = new Map<string, { cancelled: boolean }>();
@@ -125,6 +135,9 @@ export function createCrewRuntime(options: {
       if (input.member.runtime !== "zcode") return external.execute(input);
       const binding = input.execution.workspaceBinding;
       await preflight(binding);
+      // 远端持库宿主在 reserveCreatedTask 阶段强制要求项目归属；群组绑定只有目录，
+      // 这里解析唯一 root 对应的项目并透传给 createSession，解析不到仍按原策略报错。
+      const projectId = (await options.resolveProjectId?.(binding)) ?? null;
       const taskId = `agent_crew_${input.execution.executionId}`;
       const target = { ...binding, sessionId: taskId };
       const state = { cancelled: false };
@@ -134,6 +147,7 @@ export function createCrewRuntime(options: {
         await input.onTaskCreated(taskId);
         const snapshot = await sessions.createSession({
           ...target,
+          ...(projectId ? { projectId } : {}),
           // 群组成员是用户在派工那一刻已经批准过的执行者，不该再为每条命令二次确认：
           // 派工本身就是授权动作，中途弹权限框会把无人值守的接力链卡死在等待上。
           // 边界仍在：read 成员由下面的 toolAllowlist 收敛到只读工具面，

@@ -7,7 +7,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import type { PanelImperativeHandle } from "react-resizable-panels";
-import { GripHorizontal, LoaderIcon, ArrowLeft } from "lucide-react";
+import { GripHorizontal, LoaderIcon } from "lucide-react";
 import { TID_APP_HEADER } from "@zcode/shared/test-ids";
 // 保活：workspace tab 真正关闭时，按 workspaceKey 回收 side pane terminal 的常驻 PTY/xterm。
 // 对称下侧 Terminal.tsx 的 openWorkspaceKeys 回收。
@@ -1962,18 +1962,12 @@ const WorkspaceShellLayoutContent = memo(function WorkspaceShellLayoutComponent(
   }) =>
     workspaceMainView === "crew" ? (
       <div className="flex h-full min-h-0 flex-col">
-        <div className="flex h-12 shrink-0 items-center px-2 [app-region:drag]">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="[app-region:no-drag]"
-            onClick={() => onWorkspaceMainViewChange("chat")}
-          >
-            <ArrowLeft className="size-4" />
-            {intl.formatMessage({ id: "workspace.backToWorkspace" })}
-          </Button>
-        </div>
+        {/*
+          顶部导航已由 shell 的 DesktopTopOverlay 提供（crew 视图的「后退」同样走
+          primaryNavigationBack → showChatMainView），这里只保留 48px 拖拽/避让高度。
+          再渲染一个「返回工作区」按钮会与顶栏后退图标重叠，出现两个后退入口。
+        */}
+        <div className="h-12 shrink-0 [app-region:drag]" />
         <CrewSidebar
           visible={isSidebarVisible && isWorkspaceVisible}
           selectedGroupId={crewHome.groupId}

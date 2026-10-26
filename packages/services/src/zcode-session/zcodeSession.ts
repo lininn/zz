@@ -34,6 +34,8 @@ export interface ZCodeTaskTarget extends ZCodeSessionWorkspaceTarget {
 }
 
 export interface ZCodeSessionCreateParams extends ZCodeSessionWorkspaceTarget {
+  /** 远端持库宿主要求新任务有项目归属；由调用方显式给出，不从 cwd 推断。 */
+  projectId?: string | null;
   /** Host 群组只读成员的最小工具面；空/缺省不扩大现有权限。 */
   toolAllowlist?: string[];
   /** 导入/群组执行使用预分配 ID；普通新会话继续由 Agent 分配。 */

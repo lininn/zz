@@ -37,6 +37,8 @@ export function resolveCrewMember(
     rolePrompt: agent.systemPrompt,
     runtime: agent.runtime,
     accessMode: agent.accessMode === "read" ? "read" : (member.accessMode ?? agent.accessMode),
+    // 仅在管理者上输出 true；普通成员省略该字段，保持旧快照比较稳定。
+    ...(agent.isManager === true ? { isManager: true } : {}),
     ...(agent.modelSelection !== undefined ? { modelSelection: agent.modelSelection } : {}),
     ...(agent.toolAllowlist !== undefined ? { toolAllowlist: agent.toolAllowlist } : {}),
   };

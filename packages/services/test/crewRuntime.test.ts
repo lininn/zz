@@ -18,7 +18,12 @@ const role: CrewAgentInput = {
   runtime: "zcode",
   accessMode: "read",
 };
-async function fixture(assistantReplies = ["Reviewed. @other is only text."]) {
+async function fixture(
+  assistantReplies = ["Reviewed. @other is only text."],
+  runtimeOptions: {
+    resolveProjectId?: (binding: { workspacePath: string }) => string | null;
+  } = {},
+) {
   const dir = await realpath(await mkdtemp(join(tmpdir(), "crew-vertical-")));
   const f = fakeAgent();
   const path = join(dir, "tasks.sqlite");
@@ -61,7 +66,12 @@ async function fixture(assistantReplies = ["Reviewed. @other is only text."]) {
       return { session: { sessionId: params.sessionId } } as ZCodeSessionStateSnapshot;
     },
   } as Pick<IZCodeSessionService, "createSession"> as IZCodeSessionService;
-  const runtime = createCrewRuntime({ agent: gate.wrap(f.agent), sessions, admission: gate });
+  const runtime = createCrewRuntime({
+    agent: gate.wrap(f.agent),
+    sessions,
+    admission: gate,
+    ...runtimeOptions,
+  });
   const service = new CrewService({
     databasePath: path,
     ownerId: "900001:owner",
@@ -134,6 +144,50 @@ test("real CrewService -> runtime -> existing session/V4 -> board, with immutabl
     await f.service.whenIdle();
     assert.equal(f.sent.length, 1);
     assert.equal(await f.leases.get(f.dir), null);
+  } finally {
+    await f.close();
+  }
+});
+test("bound workspace project is passed into session creation for remote-host ownership", async () => {
+  const f = await fixture(["Done."], { resolveProjectId: () => "project-1" });
+  try {
+    const group = await f.service.create({
+      name: "crew",
+      members: [{ agentId: f.roleAgent.agentId }],
+    });
+    await f.service.bind({ groupId: group.groupId, binding: { workspacePath: f.dir } });
+    await f.service.send({
+      groupId: group.groupId,
+      messageId: "project",
+      text: "Review",
+      mentions: [group.members[0]!.memberId],
+    });
+    await f.service.whenIdle();
+    assert.equal(f.calls[0]?.projectId, "project-1");
+    assert.equal(
+      (await f.service.get({ groupId: group.groupId })).executions[0]?.status,
+      "succeeded",
+    );
+  } finally {
+    await f.close();
+  }
+});
+test("unresolved project is omitted so local hosts keep the existing behavior", async () => {
+  const f = await fixture(["Done."], { resolveProjectId: () => null });
+  try {
+    const group = await f.service.create({
+      name: "crew",
+      members: [{ agentId: f.roleAgent.agentId }],
+    });
+    await f.service.bind({ groupId: group.groupId, binding: { workspacePath: f.dir } });
+    await f.service.send({
+      groupId: group.groupId,
+      messageId: "no-project",
+      text: "Review",
+      mentions: [group.members[0]!.memberId],
+    });
+    await f.service.whenIdle();
+    assert.equal(f.calls[0] && "projectId" in f.calls[0], false);
   } finally {
     await f.close();
   }

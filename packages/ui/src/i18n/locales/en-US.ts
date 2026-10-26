@@ -151,6 +151,16 @@ const enUS: Record<string, string> = {
     "Could not refresh the agent catalog. Displayed definitions may be outdated.",
   "crew.createAgent": "Create agent",
   "crew.editAgent": "Edit agent",
+  "crew.managerBadge": "Manager",
+  "crew.isManager": "Make this agent the manager",
+  "crew.isManagerHint":
+    "Each crew can have at most one manager. Messages sent without a selected member are coordinated and distributed by the manager.",
+  "crew.builtinAgentLockedHint":
+    "The built-in manager cannot be deleted, but its name and prompt can be edited.",
+  "crew.groupManagerHint":
+    "Each crew can have at most one manager. The selected manager coordinates messages without a recipient.",
+  "crew.managerDispatchHint":
+    "No member selected: the manager will coordinate and distribute the task.",
   "crew.agentName": "Agent name",
   "crew.systemPrompt": "System prompt",
   "crew.defaultAccessMode": "Default access",
@@ -185,6 +195,9 @@ const enUS: Record<string, string> = {
     "This agent is used by one or more crews. Remove all references before deleting it.",
   "crew.error.agentNotFound": "A referenced agent no longer exists. Refresh and select again.",
   "crew.error.duplicateAgentId": "Each agent can be selected only once in a crew.",
+  "crew.error.multipleManagers": "A crew can have only one manager. Adjust the member selection.",
+  "crew.error.builtinAgentLocked":
+    "The built-in manager cannot be deleted; its name and prompt can be edited.",
   "crew.error.permissionEscalation": "A crew cannot grant write access to a read-only agent.",
   "crew.error.capabilitiesUnsupported":
     "This runtime does not support the requested model or tool configuration.",
@@ -196,7 +209,7 @@ const enUS: Record<string, string> = {
   "crew.error.conversationNotFound":
     "This conversation no longer exists or belongs to another crew.",
   "crew.title": "Agent Crew",
-  "crew.description": "Reusable agents · Shared directory · Manual, one-member dispatch",
+  "crew.description": "Reusable agents · Shared directory · Manager-coordinated dispatch",
   "crew.createGroup": "Create crew",
   "crew.editGroup": "Edit crew",
   "crew.groupName": "Crew name",
@@ -238,10 +251,11 @@ const enUS: Record<string, string> = {
   "crew.clearRecipient": "Clear recipient",
   "crew.removedRecipient": "The selected member no longer exists. Select again.",
   "crew.messagePlaceholder":
-    "Write a message. Assign work using the member picker above; typed @ text never dispatches work.",
+    "Write a message. Selecting a member dispatches directly; otherwise the manager coordinates. Typed @ text never dispatches work.",
   "crew.sendUnavailable": "Bind a workspace and resolve recovery-required state before sending.",
   "crew.assignedHint": "Dispatch only to the one selected member.",
-  "crew.boardOnlyHint": "No member selected: post to the board without starting an execution.",
+  "crew.boardOnlyHint":
+    "No member selected and no manager in this crew: post to the board without starting an execution.",
   "crew.sending": "Sending…",
   "crew.send": "Send",
   "crew.members": "Current members",

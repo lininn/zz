@@ -954,3 +954,8 @@ exceptions:
     paths:
       - packages/ui/src/WebRelayControlCard.tsx
     reason: Fork-only self-hosted relay control card restored after the upstream merge dropped it; packages/ui is legacy-unmanaged, so adopting the directory needs a separate boundary refactor.
+  - id: affected-test-first-push-baseline-fallback
+    rule: unmanaged-new-file
+    paths:
+      - scripts/affected-unit-tests/scope.mjs
+    reason: 首次推送基线按 docs/ci/affected-unit-test-baseline.md 的既有约定回退到 origin/HEAD、origin/main 等可用分支；修复上游拆分后没有 origin/staging 导致 pre-push 误阻断。脚本职责与调用边界不变，接管 scripts 目录不在本次范围内。

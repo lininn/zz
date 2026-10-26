@@ -4,6 +4,7 @@ import type { CrewGroup, CrewResolvedMember } from "@zcode/shared";
 import { mapCrewMembersToMentionItems } from "../mentions/providers/crewMentionProvider.js";
 import {
   crewBindingKey,
+  crewEnterSubmits,
   crewSendParams,
   editCrewDraft,
   isCrewBusy,
@@ -99,12 +100,27 @@ test("typing a standalone @ opens selection, while email or IME input does not",
   assert(!opensCrewMentionPicker("v", false, "@Reviewer", 9));
 });
 
+test("bare Enter submits the crew composer, modifiers and IME keep newline", () => {
+  // 群聊此前只能点「发送」：裸 Enter 换行，用户以为没反应。
+  assert(crewEnterSubmits({ key: "Enter" }));
+  assert(!crewEnterSubmits({ key: "Enter", shiftKey: true }));
+  assert(!crewEnterSubmits({ key: "Enter", ctrlKey: true }));
+  assert(!crewEnterSubmits({ key: "Enter", metaKey: true }));
+  // IME 组合态的 Enter 是候选确认，不能发送，否则中文输入会被吃掉半句。
+  assert(!crewEnterSubmits({ key: "Enter", isComposing: true }));
+  // @ 选择器打开时 Enter 归 picker。
+  assert(!crewEnterSubmits({ key: "Enter", pickerOpen: true }));
+  assert(!crewEnterSubmits({ key: "a" }));
+  assert(!crewEnterSubmits({ key: " " }));
+});
+
 test("dispatch is not blocked by runtime probe state; unknown member is still rejected", () => {
   for (const runtime of ["claude-cli", "codex-cli", "opencode-cli"] as const) {
     const external = { ...member, runtime };
     const draft = { ...newCrewDraft(), text: "Inspect", memberId: member.memberId };
     // probe 不可用也不阻塞派工；执行边界负责真实校验。
-    assert.equal(
+    // 数组按值比较：assert.equal 在 strict 模式下比引用，永远与字面量数组不等。
+    assert.deepEqual(
       crewSendParams(
         "group-a",
         "conversation-a",

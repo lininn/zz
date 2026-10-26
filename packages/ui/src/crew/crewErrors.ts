@@ -13,6 +13,8 @@ const CREW_ERROR_KEYS = new Set([
   "agentInUse",
   "agentNotFound",
   "duplicateAgentId",
+  "multipleManagers",
+  "builtinAgentLocked",
   "permissionEscalation",
   "capabilitiesUnsupported",
   "duplicateMemberId",

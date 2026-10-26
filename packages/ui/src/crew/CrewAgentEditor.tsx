@@ -36,10 +36,11 @@ export function CrewAgentEditor({
           systemPrompt: agent.systemPrompt,
           runtime: agent.runtime,
           accessMode: agent.accessMode,
+          isManager: agent.isManager === true,
           modelSelection: agent.modelSelection,
           toolAllowlist: agent.toolAllowlist,
         }
-      : { name: "", systemPrompt: "", runtime: "zcode", accessMode: "read" },
+      : { name: "", systemPrompt: "", runtime: "zcode", accessMode: "read", isManager: false },
   );
   const [tools, setTools] = useState(() => agent?.toolAllowlist?.join("\n") ?? "");
   const [limitTools, setLimitTools] = useState(agent?.toolAllowlist !== undefined);
@@ -150,6 +151,18 @@ export function CrewAgentEditor({
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`${id}-manager`}
+              checked={input.isManager === true}
+              disabled={pending}
+              onCheckedChange={(value) => change({ isManager: value === true })}
+            />
+            <Label htmlFor={`${id}-manager`}>{t("isManager")}</Label>
+          </div>
+          <p className="text-ui-caption text-muted-foreground">{t("isManagerHint")}</p>
         </div>
         {input.runtime === "zcode" ? (
           <>

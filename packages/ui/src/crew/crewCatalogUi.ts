@@ -15,14 +15,17 @@ export function crewGroupInput(
 ) {
   const seen = new Set<string>();
   const byId = new Map(agents.map((agent) => [agent.agentId, agent]));
+  let managers = 0;
   for (const member of members) {
     const agent = byId.get(member.agentId);
     if (!agent) throw new Error("crew.agentNotFound");
     if (seen.has(member.agentId)) throw new Error("crew.duplicateAgentId");
     if (agent.accessMode === "read" && member.accessMode === "write")
       throw new Error("crew.permissionEscalation");
+    if (agent.isManager === true) managers++;
     seen.add(member.agentId);
   }
+  if (managers > 1) throw new Error("crew.multipleManagers");
   return crewCreateParamsSchema.parse({
     name: name.trim(),
     ...(announcement === undefined ? {} : { announcement }),

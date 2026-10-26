@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import type { CrewAgent } from "@zcode/shared";
+import { CREW_BUILTIN_MANAGER_AGENT_ID, type CrewAgent } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import {
   AlertDialog,
@@ -69,7 +69,14 @@ export function CrewAgentCatalog({ catalog }: { catalog: CrewAgentCatalogControl
             key={agent.agentId}
             className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-4"
           >
-            <h4 className="break-words text-ui-base font-medium">{agent.name}</h4>
+            <h4 className="flex flex-wrap items-center gap-2 break-words text-ui-base font-medium">
+              {agent.name}
+              {agent.isManager === true && (
+                <span className="rounded-full border border-border px-2 py-0.5 text-ui-xs text-muted-foreground">
+                  {t("managerBadge")}
+                </span>
+              )}
+            </h4>
             <p className="text-ui-caption text-muted-foreground">
               {t(`runtime.${agent.runtime}`)} · {t(`access.${agent.accessMode}`)}
             </p>
@@ -95,7 +102,12 @@ export function CrewAgentCatalog({ catalog }: { catalog: CrewAgentCatalogControl
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={catalog.pending}
+                    disabled={catalog.pending || agent.agentId === CREW_BUILTIN_MANAGER_AGENT_ID}
+                    title={
+                      agent.agentId === CREW_BUILTIN_MANAGER_AGENT_ID
+                        ? t("builtinAgentLockedHint")
+                        : undefined
+                    }
                     aria-label={t("deleteAgentNamed", { name: agent.name })}
                   >
                     <Trash2 className="size-4" />
