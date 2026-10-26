@@ -85,7 +85,7 @@ async function writeStagedManifest() {
     homepage: source.homepage,
     bugs: source.bugs,
     bin: source.bin,
-    files: ["dist", "README.md"],
+    files: ["dist", "README.md", "README.en.md"],
     type: source.type,
     main: source.main,
     engines: { node: ">=24.0.0" },
@@ -123,6 +123,7 @@ async function stageRuntime() {
     filter: (source) => !source.endsWith(".map"),
   });
   await cp(resolve(cliRoot, "README.md"), resolve(stagingRoot, "README.md"));
+  await cp(resolve(cliRoot, "README.en.md"), resolve(stagingRoot, "README.en.md"));
   await cp(resolve(repoRoot, "LICENSE"), resolve(stagingRoot, "LICENSE"));
   await cp(resolve(repoRoot, "THIRD-PARTY-NOTICES.md"), resolve(stagingRoot, "THIRD-PARTY-NOTICES.md"));
 }

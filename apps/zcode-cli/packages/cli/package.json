@@ -1,6 +1,6 @@
 {
   "name": "@lininn/zz",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "AI coding assistant CLI — zz command",
   "license": "Apache-2.0",
   "repository": {
@@ -16,7 +16,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "README.en.md"
   ],
   "type": "module",
   "main": "./dist/zcode.cjs",

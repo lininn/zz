@@ -1,5 +1,7 @@
 # @lininn/zz
 
+简体中文 · [English](README.en.md)
+
 zz 是基于 ZCode 的 AI 编程工作台，一条命令即可在终端、浏览器中与 AI 协作编码。
 
 ## 安装
@@ -17,7 +19,7 @@ zz            # 终端 TUI
 zz --web      # 本地 Web 界面
 ```
 
-也可以直接访问 [pc.d-1.top](https://pc.d-1.top) 在线使用，无需本地安装。
+[pc.d-1.top](https://pc.d-1.top) 不是在线版，而是远程控制入口：先在你要控制的机器上安装并启动 zz，再运行 connector 绑定账号，之后就能用任意浏览器（包括手机）远程操控这台机器。使用需要邀请码，关注微信公众号「html5开发分享」并回复「邀请码」即可领取。
 
 ## 功能
 
@@ -78,9 +80,11 @@ zz skills             # 技能管理
 
 ## 远程控制（手机操控 PC）
 
-1. PC 上启动 `zz --web`（或 TUI 模式）
-2. PC 上运行 connector（`zcode-relay` 的 connector），绑定账号
-3. 手机浏览器访问中转地址，登录后即可远程操控 PC 上的 ZCode
+1. 在要控制的机器上启动 `zz --web`（或 TUI 模式）
+2. 在同一台机器上运行 connector（`zcode-relay` 的 connector），绑定账号
+3. 手机或任意浏览器访问 [pc.d-1.top](https://pc.d-1.top)，登录后即可远程操控该机器上的 ZCode
+
+需要邀请码才能登录：关注微信公众号「html5开发分享」，回复「邀请码」领取。
 
 中转服务器支持多版本共存：手机端看到的页面版本与 PC 端运行的 ZCode 版本自动匹配。
 
