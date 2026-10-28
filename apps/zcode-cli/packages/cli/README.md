@@ -4,6 +4,12 @@
 
 zz 是基于 ZCode 的 AI 编程工作台，一条命令即可在终端、浏览器中与 AI 协作编码。
 
+## 功能预览
+
+|         首页 / 多项目工作区          |        群组协作（多 Agent 接力）         |
+| :----------------------------------: | :--------------------------------------: |
+| ![zz 首页](https://raw.githubusercontent.com/lininn/zz/main/docs/images/zz/home.jpeg) | ![zz 群组协作](https://raw.githubusercontent.com/lininn/zz/main/docs/images/zz/crew.jpeg) |
+
 ## 安装
 
 ```bash

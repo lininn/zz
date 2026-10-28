@@ -4,6 +4,12 @@
 
 zz is an AI coding workspace built on ZCode. One command lets you collaborate with AI in the terminal or in your browser.
 
+## Preview
+
+|            Home / multi-project workspace             |          Crew collaboration (multi-agent relay)           |
+| :---------------------------------------------------: | :-------------------------------------------------------: |
+| ![zz home](https://raw.githubusercontent.com/lininn/zz/main/docs/images/zz/home.jpeg) | ![zz crew collaboration](https://raw.githubusercontent.com/lininn/zz/main/docs/images/zz/crew.jpeg) |
+
 ## Installation
 
 ```bash
