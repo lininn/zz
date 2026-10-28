@@ -51,6 +51,9 @@ export async function crewSidebarHarness(
           useRef: (initial: unknown) => memo(() => ({ current: initial }), []),
           useMemo: memo,
           useCallback: (fn: unknown, deps: unknown[]) => memo(() => fn, deps),
+          // React 19 的 useEffectEvent 在 harness 里没有真实 render 生命周期；
+          // 返回稳定函数即可，调用方只关心能取得最新闭包。
+          useEffectEvent: (fn: unknown) => memo(() => fn, []),
           useId: () => memo(() => `crew-sidebar-${index}`, []),
           useEffect: (effect: () => void, deps: unknown[]) =>
             memo(() => {

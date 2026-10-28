@@ -26,6 +26,10 @@ run = "mise exec -- node scripts/mise-run.mjs pnpm dev:desktop:prod"
 
 [tasks.dev-web]
 description = "Start the server and web client dev servers."
+# 与 zzdev 同源：外部 runtime（Codex / Claude CLI）派工需要显式声明宿主隔离承诺。
+# 未声明时 preflight fail-closed，群组里所有外部成员恒为 outer_isolation_missing「不可用」。
+# 本地开发机即宿主自身，这里显式声明；生产/共享环境请勿照搬，应按真实隔离情况配置。
+env = { ZCODE_CREW_OUTER_SANDBOX_READY = "1" }
 run = "mise exec -- node scripts/mise-run.mjs pnpm dev:web"
 
 [tasks.dev-remote]

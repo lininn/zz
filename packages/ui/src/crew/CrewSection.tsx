@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Copy, Pencil, Plus, RefreshCw, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Bot, Copy, Pencil, Plus, RefreshCw, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
   AlertDialog,
@@ -97,11 +97,24 @@ export function CrewSection() {
           setTab(next);
         }}
       >
-        <TabsList aria-label={t("title")}>
-          <TabsTrigger value="agents" disabled={catalog.pending}>
+        <TabsList
+          aria-label={t("title")}
+          className="group-data-horizontal/tabs:h-10 w-full justify-start gap-1 rounded-xl border border-border bg-surface-hover p-1 sm:w-fit"
+        >
+          <TabsTrigger
+            value="agents"
+            disabled={catalog.pending}
+            className="gap-1.5 rounded-lg border-transparent bg-transparent px-3 text-foreground-subtle transition-all hover:bg-surface hover:text-foreground data-active:bg-foreground data-active:font-semibold data-active:text-background data-active:shadow-sm sm:flex-none"
+          >
+            <Bot className="size-4" />
             {t("agentsTab")}
           </TabsTrigger>
-          <TabsTrigger value="groups" disabled={catalog.pending}>
+          <TabsTrigger
+            value="groups"
+            disabled={catalog.pending}
+            className="gap-1.5 rounded-lg border-transparent bg-transparent px-3 text-foreground-subtle transition-all hover:bg-surface hover:text-foreground data-active:bg-foreground data-active:font-semibold data-active:text-background data-active:shadow-sm sm:flex-none"
+          >
+            <Users className="size-4" />
             {t("groupsTab")}
           </TabsTrigger>
         </TabsList>

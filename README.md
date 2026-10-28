@@ -8,8 +8,8 @@ zz 是基于 ZCode 的 AI 编程工作台，提供桌面应用、浏览器界面
 
 ## 功能预览
 
-| 首页 / 多项目工作区 | 群组协作（多 Agent 接力） |
-| :---: | :---: |
+|         首页 / 多项目工作区          |        群组协作（多 Agent 接力）         |
+| :----------------------------------: | :--------------------------------------: |
 | ![zz 首页](docs/images/zz/home.jpeg) | ![zz 群组协作](docs/images/zz/crew.jpeg) |
 
 - **多项目工作区**：项目、任务、会话集中管理，支持本地与远程工作区。
@@ -106,6 +106,8 @@ ZCODE_CREW_OUTER_SANDBOX_READY=1 pnpm dev:web
 ```
 
 部署方也可通过程序接口的 `externalRuntime.outerSandboxReady` 选项声明。另有 `ZCODE_CREW_ALLOW_DIRTY_WORKSPACE=1` 允许 write 派工使用未提交改动的工作区（默认拒绝）。侧栏成员的 runtime 状态探测仅作展示，不阻塞派工；任务成败由执行时的 preflight 校验判定。
+
+除隔离声明外，外部 CLI 自身的登录态也必须就绪：`claude` 未登录或 `codex login status` 显示 `Not logged in` 时，对应成员 probe 返回 `authentication_failed`（原因与隔离无关）。用 `mise run dev-web` 启动会自动带上隔离声明；直接 `pnpm dev:web` 需要按上面的命令加环境变量。
 
 ### ZCode 命令行版
 

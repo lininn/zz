@@ -206,6 +206,79 @@ test("known service failures are localized, unknown errors do not expose sensiti
   assert.ok(en[`crew.${crewErrorKey(new Error("crew.identityMismatch"))}`]);
 });
 
+test("project ownership rejections never surface as raw keys in the conversation", () => {
+  for (const key of [
+    "remote-project-required",
+    "cwd-not-in-roots",
+    "remote-single-root-required",
+  ]) {
+    const localized = crewErrorKey(`project.${key}`);
+    assert.notEqual(localized, "commandError", `${key} must map to a localized crew error`);
+    assert.ok(en[`crew.${localized}`], `${key} needs an en-US message`);
+    assert.ok(zh[`crew.${localized}`], `${key} needs a zh-CN message`);
+  }
+  // 未登记的项目错误仍按未知错误处理，避免泄露任意内部键。
+  assert.equal(crewErrorKey("project.some-internal-failure"), "commandError");
+});
+
+for (const locale of ["zh-CN", "en-US"] satisfies Locale[]) {
+  test(`failed dispatch shows a localized project-root hint instead of the raw key (${locale})`, () => {
+    const messages = locale === "en-US" ? en : zh;
+    const html = renderToStaticMarkup(
+      <ZCodeIntlProvider initialLocale={locale}>
+        <CrewBoard
+          detail={{
+            conversation,
+            conversations: [conversation],
+            group,
+            resolvedMembers: [member],
+            messages: [
+              {
+                groupId: group.groupId,
+                conversationId: conversation.conversationId,
+                messageId: "msg-failed",
+                epoch: 0,
+                sequence: 1,
+                sender: "member",
+                kind: "chat",
+                memberId: member.memberId,
+                text: "project.remote-project-required",
+                mentions: [],
+                executionId: "exec-failed",
+                createdAt: 0,
+              },
+            ],
+            executions: [
+              {
+                executionId: "exec-failed",
+                groupId: group.groupId,
+                conversationId: conversation.conversationId,
+                messageId: "msg-failed",
+                memberId: member.memberId,
+                epoch: 0,
+                status: "failed",
+                memberSnapshot: member,
+                workspaceBinding: { workspacePath: "/test" },
+                ownerId: null,
+                taskId: null,
+                createdAt: 0,
+                updatedAt: 0,
+              },
+            ],
+          }}
+          pending={false}
+          onCancel={async () => {}}
+          onRespondPermission={async () => {}}
+        />
+      </ZCodeIntlProvider>,
+    );
+    assert.doesNotMatch(html, /project\.remote-project-required/);
+    // renderToStaticMarkup 会把英文撇号转义成实体，比对前先还原。
+    const text = html.replace(/&#x27;|&#39;/g, "'");
+    assert.ok(text.includes(messages["crew.error.projectRootRequired"]!));
+  });
+}
+
 test("recovery-required execution without taskId keeps safe cancel available with a blocking hint", () => {
   const detail: CrewGroupDetail = {
     conversation,

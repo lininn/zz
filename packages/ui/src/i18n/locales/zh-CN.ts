@@ -49,7 +49,7 @@ const zhCN: Record<string, string> = {
     "当前连接没有已加载的只读 V4 过程；恢复历史会运行会话钩子，因此未自动恢复",
   "crew.home.partialTimeline": "仅显示当前已加载的执行过程；更早历史没有安全的被动读取接口。",
   "crew.home.runtimeIsolationMissing":
-    "宿主尚未提供可信的外部运行时隔离。CLI 已安装也不能绕过此安全检查。",
+    "宿主尚未提供可信的外部运行时隔离，CLI 已安装也不能绕过此安全检查。本地开发可用 ZCODE_CREW_OUTER_SANDBOX_READY=1 重启服务；共享或生产宿主请按真实隔离情况配置。",
   "crew.home.runtimeBridgeUnavailable":
     "当前 Agent 未提供群组运行时协议。开发服务需使用当前源码启动。",
   "crew.home.sidebarTitle": "群组",
@@ -102,6 +102,12 @@ const zhCN: Record<string, string> = {
   "crew.error.workspaceBusy": "此工作区已有写入执行，请等待完成后重试。",
   "crew.error.groupBusy": "群组仍有未决执行，暂不可修改或重新绑定。",
   "crew.error.workspaceUnbound": "请先绑定工作目录。",
+  "crew.error.projectRootRequired":
+    "群组绑定的目录不属于任何项目。当前宿主只允许派发到项目主目录（每个项目仅一个根目录）。请把群组工作目录改为项目主目录后重试。",
+  "crew.error.projectCwdNotInRoots":
+    "群组目录与项目主目录不一致。请把群组工作目录改为该项目的主目录后重试。",
+  "crew.error.projectSingleRootRequired":
+    "当前宿主只支持每个项目一个根目录。请改绑到单根目录的项目主目录后重试。",
   "crew.error.bindingChanged": "工作目录绑定已变化，请刷新后重试。",
   "crew.error.memberNotFound": "成员已变化，请刷新并重新选择派工成员。",
   "crew.error.duplicateMemberId": "成员身份重复，请检查配置。",

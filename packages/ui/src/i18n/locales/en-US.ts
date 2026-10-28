@@ -58,7 +58,7 @@ const enUS: Record<string, string> = {
   "crew.home.partialTimeline":
     "Only the currently loaded timeline is shown; earlier history has no safe passive-read interface.",
   "crew.home.runtimeIsolationMissing":
-    "The host has not provided trusted outer runtime isolation. An installed CLI cannot bypass this safety check.",
+    "The host has not provided trusted outer runtime isolation, and an installed CLI cannot bypass this safety check. For local development, restart the server with ZCODE_CREW_OUTER_SANDBOX_READY=1; on shared or production hosts, configure it to match real isolation.",
   "crew.home.runtimeBridgeUnavailable":
     "The Agent does not expose the crew runtime protocol. The development server must use the current source.",
   "crew.home.sidebarTitle": "Crews",
@@ -127,6 +127,12 @@ const enUS: Record<string, string> = {
   "crew.error.groupBusy":
     "The crew has unresolved executions and cannot be modified or rebound yet.",
   "crew.error.workspaceUnbound": "Bind a workspace first.",
+  "crew.error.projectRootRequired":
+    "The crew workspace is not a project root. This host only dispatches into a project's primary root (one root per project). Rebind the crew workspace to the project root and retry.",
+  "crew.error.projectCwdNotInRoots":
+    "The crew workspace does not match the project's root. Rebind the crew workspace to that project's root and retry.",
+  "crew.error.projectSingleRootRequired":
+    "This host supports a single root per project. Rebind the crew workspace to a single-root project and retry.",
   "crew.error.bindingChanged": "The workspace binding changed. Refresh before retrying.",
   "crew.error.memberNotFound": "Members have changed. Refresh and select the recipient again.",
   "crew.error.duplicateMemberId": "Member identities are duplicated. Check the configuration.",

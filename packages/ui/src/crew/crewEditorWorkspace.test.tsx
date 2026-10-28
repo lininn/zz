@@ -72,13 +72,16 @@ for (const native of [false, true])
       const browser = await crewSidebarHarness(
         "../DirectoryBrowser.tsx",
         {
-          "./i18n/IntlProvider.js": {
+          // Key 必须与 DirectoryBrowser.tsx 的 import specifier 完全一致；该文件已改用
+          // `@/` 别名，旧的 `./` key 不会命中，会把真实 IntlProvider 拉进来并在无 Provider
+          // 的 harness 里触发 useContext(null)。
+          "@/i18n/IntlProvider.js": {
             useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
           },
-          "./components/ui/button.js": { Button: "button" },
-          "./components/ui/input.js": { Input: "input" },
-          "./logger.js": { logger: { warn() {} } },
-          "./lib/foregroundRequest.js": foregroundRequest,
+          "@/components/ui/button.js": { Button: "button" },
+          "@/components/ui/input.js": { Input: "input" },
+          "@/logger.js": { logger: { warn() {} } },
+          "@/lib/foregroundRequest.js": foregroundRequest,
         },
         { AbortController },
       );
@@ -87,21 +90,24 @@ for (const native of [false, true])
       await setImmediate();
       const input = find(renderBrowser(), (el) => el.type === "input" && el.props.type === "text");
       (input.props.onChange as (event: unknown) => void)({ target: { value: selectedPath } });
-      let stopped = false;
+      let defaultPrevented = false;
       const form = find(renderBrowser(), (el) => el.type === "form");
       (form.props.onSubmit as (event: unknown) => void)({
-        preventDefault() {},
-        stopPropagation() {
-          stopped = true;
+        preventDefault() {
+          defaultPrevented = true;
         },
+        stopPropagation() {},
       });
-      assert.equal(stopped, true, "Portal submits must not reach the parent group save form");
+      // DirectoryBrowser 自身渲染在 portal 中，不再依赖 stopPropagation 与父表单隔离；
+      // 提交只要阻止默认导航即可，否则会触发整页刷新。
+      assert.equal(defaultPrevented, true, "Browser submit must prevent default navigation");
       await setImmediate();
       const select = find(
         renderBrowser(),
-        (el) => el.type === "button" && el.props.children === "directoryBrowser.selectDir",
+        (el) => el.type === "button" && el.props["data-testid"] === "directory-browser-confirm",
       );
-      assert.equal(select.props.disabled, false);
+      // disabled 表达式以 selecting 结尾，未选择时可能求值为 undefined（falsy 即启用）。
+      assert.ok(!select.props.disabled);
       assert.equal(select.props.type, "button");
       (select.props.onClick as () => void)();
       assert(
@@ -112,5 +118,16 @@ for (const native of [false, true])
     const updated = renderField();
     assert.equal(find(updated, (el) => el.type === Select).props.value, selectedPath);
     assert.equal(find(updated, (el) => el.type === SelectValue).props.children, selectedPath);
+    // 回归：Radix 会在受控值变化后用隐藏原生 select 回传一次空字符串（下拉项未挂载）。
+    // 空 key 不能被当作“未绑定”，否则刚选中的目录会被立刻清掉。
+    const selectProps = find(updated, (el) => el.type === Select).props as {
+      onValueChange: (key: string) => void;
+    };
+    selectProps.onValueChange("");
+    assert.equal(
+      find(renderField(), (el) => el.type === Select).props.value,
+      selectedPath,
+      "Spurious empty key must not clear the selected directory",
+    );
     assert.equal(saves, 0, "Selecting a path changes only the draft, never submits the group");
   });
