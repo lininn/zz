@@ -2102,7 +2102,12 @@ export function SessionPane({
                 ? rootSessionId
                 : targetSessionId,
           },
-          recentScope.hostId,
+          // 本地 workspace 没有远端身份时必须省略 hostId：ProjectService 的 owner 未必叫
+          // "local"（standalone server 的 owner 是 remote:server:<id>），显式传 "local"
+          // 会被当成离线远端 Host，导致所有后续发送抛 project.host-offline。
+          // 只有带远端身份时才按身份路由到对应 Host；与 useRootWorkspaceActions 的
+          // “显式 local 即省略 Host”约定保持一致。
+          workspaceIdentity ? recentScope.hostId : undefined,
         );
         recentScope = { ...recentScope, projectId: directories.projectId };
       }

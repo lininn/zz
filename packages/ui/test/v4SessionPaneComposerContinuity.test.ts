@@ -615,10 +615,34 @@ describe("SessionPane composer continuity", () => {
     });
     expect(servicesMock.projectService.resolveSessionDirectories).toHaveBeenCalledWith(
       expect.objectContaining({ taskId: ownerId }),
-      expect.any(String),
+      // 本地 workspace 没有远端身份；省略 hostId 才会路由到当前 Host 自己的 owner。
+      undefined,
     );
     expect(conversationMock.sendCommand).toHaveBeenCalledWith(
       expect.objectContaining({ type: "sendText", sessionId: "session-1" }),
+    );
+  });
+
+  it("远端 workspace 发送时按自身身份路由项目目录查询", async () => {
+    const root = createRoot(installMinimalDom());
+    mountedRoots.push(root);
+    projectionState.current = {
+      ...projectionState.current,
+      snapshot: { ...makeDraftSnapshot(), sessionId: "session-1" },
+    };
+    renderPane(root, "session-1", {
+      workspacePath: "/remote/workspace",
+      workspaceIdentity: "remote:server:srv:/remote/workspace",
+    });
+    await act(async () => {
+      await scrollFocus.composerProps?.onSendText("follow up");
+    });
+    expect(servicesMock.projectService.resolveSessionDirectories).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskId: "session-1",
+        workspaceIdentity: "remote:server:srv:/remote/workspace",
+      }),
+      "remote:server:srv",
     );
   });
 

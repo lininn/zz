@@ -49,9 +49,17 @@ export function CrewWorkspaceField({
         <Select
           value={value ? crewBindingKey(value) : "unbound"}
           disabled={disabled}
-          onValueChange={(key) =>
-            onChange(options.find((item) => crewBindingKey(item) === key) ?? null)
-          }
+          onValueChange={(key) => {
+            // Radix 的隐藏原生 select 会在受控值变化时派发一次 change；下拉项只在展开时
+            // 挂载，浏览器匹配不到 option 就把值置空并回传 ""。若把空 key 当作“未绑定”，
+            // 刚从目录选择器选中的路径会被立刻清空，编辑器一直显示待绑定。
+            if (key === "unbound") {
+              if (allowUnbound) onChange(null);
+              return;
+            }
+            const next = options.find((item) => crewBindingKey(item) === key);
+            if (next) onChange(next);
+          }}
         >
           <SelectTrigger id={id} className="min-w-0 flex-1">
             <SelectValue>{value ? value.workspacePath : t("status.unbound")}</SelectValue>
