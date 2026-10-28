@@ -58,11 +58,39 @@ const highlighterCache = new Map<
   Promise<HighlighterGeneric<BundledLanguage, BundledTheme>>
 >();
 const tokensCache = new Map<string, TokenizedCode>();
+const tokensCacheEntryChars = new Map<string, number>();
+let tokensCacheTotalChars = 0;
+// 流式 Edit 预览每个 chunk 都会换一个 cache key（key 含 code.length），
+// 只写不删会随会话单向增长。按 LRU 双上限淘汰：条数兜住小文件碎片，
+// 字符数兜住少数超大文件（tokens 体积远大于源码，2M 字符约数十 MB）。
+const TOKENS_CACHE_MAX_ENTRIES = 120;
+const TOKENS_CACHE_MAX_TOTAL_CHARS = 2_000_000;
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
-// 内存诊断计数器：tokensCache 目前无淘汰，是审计里
-// renderer 最可疑的增长点，先把条数落到日志里。
+
+const deleteTokensCacheEntry = (key: string) => {
+  if (!tokensCache.delete(key)) {
+    return;
+  }
+  tokensCacheTotalChars -= tokensCacheEntryChars.get(key) ?? 0;
+  tokensCacheEntryChars.delete(key);
+};
+
+const trimTokensCache = () => {
+  while (
+    tokensCache.size > TOKENS_CACHE_MAX_ENTRIES ||
+    tokensCacheTotalChars > TOKENS_CACHE_MAX_TOTAL_CHARS
+  ) {
+    const oldest = tokensCache.keys().next();
+    if (oldest.done) {
+      break;
+    }
+    deleteTokensCacheEntry(oldest.value);
+  }
+};
+
 uiMemoryDiagnosticsRegistry.register("shiki", () => ({
   tokensCache: tokensCache.size,
+  tokensCacheChars: tokensCacheTotalChars,
   highlighters: highlighterCache.size,
 }));
 
@@ -142,6 +170,9 @@ export const highlightCode = (
 
   const cached = tokensCache.get(tokensCacheKey);
   if (cached) {
+    // LRU：命中即移到队尾，避免热块被后续流式块挤出。
+    tokensCache.delete(tokensCacheKey);
+    tokensCache.set(tokensCacheKey, cached);
     // 缓存命中时也需要通知 effect，但不能同步触发 setState。
     // 历史消息恢复时大量代码块会在同一次提交后挂载；同步 callback 会把 cache-hit 变成嵌套更新，
     // 和 Streamdown 的重渲染叠在一起时容易触发 React #185。推迟到微任务后再交给幂等 setter。
@@ -178,6 +209,11 @@ export const highlightCode = (
       };
 
       tokensCache.set(tokensCacheKey, tokenized);
+      // 同一 key 并发重复 tokenize 时会二次写入，先扣掉旧值再累加，避免字符数虚高。
+      tokensCacheTotalChars +=
+        code.length - (tokensCacheEntryChars.get(tokensCacheKey) ?? 0);
+      tokensCacheEntryChars.set(tokensCacheKey, code.length);
+      trimTokensCache();
 
       const subs = subscribers.get(tokensCacheKey);
       if (subs) {

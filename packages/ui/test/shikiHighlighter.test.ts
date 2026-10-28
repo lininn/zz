@@ -4,6 +4,15 @@ import {
   highlightCode,
   shouldUseSyntaxHighlighting,
 } from "@/lib/shikiHighlighter.js";
+import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
+
+const highlightAndWait = (code: string) =>
+  new Promise<void>((resolve) => {
+    const immediate = highlightCode(code, "json", "github-light", () => resolve());
+    if (immediate) {
+      resolve();
+    }
+  });
 
 describe("shikiHighlighter", () => {
   it("keeps plain text code fences out of the async highlighter", () => {
@@ -33,4 +42,19 @@ describe("shikiHighlighter", () => {
     expect(tokenized).toEqual(createRawCodeTokens(code));
     expect(callbackCount).toBe(0);
   });
+
+  it(
+    "evicts oldest tokenized code once the cache limit is reached",
+    async () => {
+      // 流式 Edit 预览每个 chunk 都是新 key；这里模拟远超上限的连续写入。
+      for (let index = 0; index < 140; index += 1) {
+        await highlightAndWait(JSON.stringify({ index, payload: `chunk-${index}` }));
+      }
+
+      const counters = uiMemoryDiagnosticsRegistry.collect();
+      expect(counters["shiki.tokensCache"]).toBe(120);
+      expect(counters["shiki.tokensCacheChars"] ?? 0).toBeLessThanOrEqual(2_000_000);
+    },
+    30_000,
+  );
 });

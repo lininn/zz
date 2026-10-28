@@ -21,6 +21,20 @@ const SNAPSHOT_CACHE_STORAGE_KEY = "zcode-task-snapshot-cache:v1";
 const SNAPSHOT_CACHE_MAX_ENTRY_BYTES = 256 * 1024;
 const SNAPSHOT_CACHE_MAX_TOTAL_BYTES = 2 * 1024 * 1024;
 const SNAPSHOT_CACHE_MAX_ENTRIES = 20;
+type SnapshotCache = Map<string, { etag: string; snapshot: ZCodeTaskSnapshot }>;
+/**
+ * 内存缓存与持久层同受 20 条上限约束：每打开一个 task、或同一 task 换
+ * messageLimit/model/thoughtLevel 都会新增 key，旧实现只增不删。
+ */
+const trimSnapshotCache = (cache: SnapshotCache) => {
+  while (cache.size > SNAPSHOT_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next();
+    if (oldest.done) {
+      break;
+    }
+    cache.delete(oldest.value);
+  }
+};
 type PersistedSnapshotCacheEntry = {
   key: string;
   etag: string;
@@ -234,8 +248,11 @@ function createZCodeTaskServiceProxy(service: IZCodeTaskService): IZCodeTaskServ
         }
         const cachedSnapshotEntry =
           snapshotCache.get(requestKey) ?? readPersistedSnapshotEntry(requestKey);
-        if (cachedSnapshotEntry && !snapshotCache.has(requestKey)) {
+        if (cachedSnapshotEntry) {
+          // 命中即刷新 LRU 顺序；从持久层回填的条目同样受上限约束。
+          snapshotCache.delete(requestKey);
           snapshotCache.set(requestKey, cachedSnapshotEntry);
+          trimSnapshotCache(snapshotCache);
         }
 
         // 远控首屏恢复时，多个 hook 会并发请求同一 task snapshot，
@@ -263,6 +280,7 @@ function createZCodeTaskServiceProxy(service: IZCodeTaskService): IZCodeTaskServ
                 snapshot: fallbackResult.snapshot,
               };
               snapshotCache.set(requestKey, nextEntry);
+              trimSnapshotCache(snapshotCache);
               writePersistedSnapshotEntry(
                 requestKey,
                 fallbackResult.etag,
@@ -277,6 +295,7 @@ function createZCodeTaskServiceProxy(service: IZCodeTaskService): IZCodeTaskServ
               snapshot: firstResult.snapshot,
             };
             snapshotCache.set(requestKey, nextEntry);
+            trimSnapshotCache(snapshotCache);
             writePersistedSnapshotEntry(
               requestKey,
               firstResult.etag,
