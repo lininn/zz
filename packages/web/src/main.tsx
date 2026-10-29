@@ -2049,6 +2049,7 @@ function reloadAfterWebConnectionClose(event: WebSocketConnectionCloseEvent): vo
   if (typeof document !== "undefined" && document.visibilityState === "hidden") {
     // 后台标签页可能被浏览器冻结；此时重载既看不到也没意义，等切回前台再补。
     webConnectionClosedReloadPending = true;
+    registerWebConnectionCloseVisibilityRecovery();
     return;
   }
   webConnectionClosedReloadPending = true;
@@ -2059,15 +2060,23 @@ function reloadAfterWebConnectionClose(event: WebSocketConnectionCloseEvent): vo
   window.location.reload();
 }
 
-/** 后台标签页的补位重载：连接已在后台断开时，切回前台立刻重建。 */
+/**
+ * 后台标签页的补位重载：连接已在后台断开时，切回前台立刻重建。
+ *
+ * 只在真正发生「后台断开」时注册一次，不在 bootstrap 阶段触碰 document 事件——
+ * 这样不依赖宿主一定实现了 addEventListener（测试/受限环境里的 document 可能没有）。
+ */
 function registerWebConnectionCloseVisibilityRecovery(): void {
-  if (typeof document === "undefined") return;
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    if (!webConnectionClosedReloadPending) return;
-    console.warn("[web] websocket closed while hidden, reloading after visible");
-    window.location.reload();
-  });
+  if (typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState !== "visible") return;
+      console.warn("[web] websocket closed while hidden, reloading after visible");
+      window.location.reload();
+    },
+    { once: true },
+  );
 }
 
 async function bootstrapWebApp() {
@@ -2105,7 +2114,6 @@ async function bootstrapWebApp() {
     return;
   }
 
-  registerWebConnectionCloseVisibilityRecovery();
   try {
     const services = await connectViaWebSocket(bootstrap.wsUrl, {
       onClose: reloadAfterWebConnectionClose,
