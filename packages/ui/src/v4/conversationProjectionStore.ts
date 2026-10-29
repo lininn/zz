@@ -47,6 +47,31 @@ const RUNTIME_RECYCLE_RETRY_DELAYS_MS = [250, 1_000, 3_000] as const;
 export const ACCEPTED_INPUT_PROJECTION_GRACE_MS = 2_000;
 const ACCEPTED_INPUT_COMMAND_TYPES = new Set(["sendText", "editUserQuery"]);
 
+/**
+ * 运行中帧静默看门狗。
+ *
+ * store 的所有逻辑故障（断档、assembly fault、过期 ACK、runtime 换代）都有自愈路径，
+ * 唯一没有防线的是“帧从此不再到达”：传输半开、publisher 静默、renderer 丢帧都不产生任何
+ * fault，status 仍是 live，投影停在最后一次收到的 running 态。UI 会一直显示“工作中 N 秒”，
+ * 只有手动刷新才恢复（真实线上现象：后端 turn 早已 turn.completed，进程计数也已归零）。
+ * 因此在运行期按权威投影做静默看门狗，超时走既有 same-sub 恢复。
+ */
+export const LIVE_FRAME_STALL_GRACE_MS = 30_000;
+/** 连续静默按此退避，避免慢模型/长工具调用被误判成故障而反复全量恢复。 */
+export const LIVE_FRAME_STALL_BACKOFF_MS = [30_000, 60_000, 120_000, 300_000] as const;
+/** 恢复 RPC 自身响应上限：传输死了 resync 永不返回，会把 store 永久卡在 recovery 里。 */
+export const RECOVERY_RPC_TIMEOUT_MS = 20_000;
+/**
+ * 已有投影后重建订阅的响应上限。
+ *
+ * 冷启动要跑 CLI spawn + session restore，慢机器上可以合法超过二十秒，因此这条超时只对
+ * “已经有投影、再重建”的场景生效：它要抓的是传输半开时 subscribe 永不返回——那会让面板
+ * 永久停在 connecting（连「重新连接」按钮都不出现）。超时只落 error，不销毁任何本地状态，
+ * 迟到的 ACK 仍会原子替换成 live。
+ */
+export const CONNECT_STALL_TIMEOUT_MS = 45_000;
+const CONNECT_STALL_ERROR = "订阅重建超时：与 ZCode 服务的连接可能已静默断开，请重新连接";
+
 export function requiresAcceptedInputProjection(type: string): boolean {
   return ACCEPTED_INPUT_COMMAND_TYPES.has(type);
 }
@@ -314,6 +339,8 @@ export class ConversationProjectionStore {
     forceSnapshot: boolean;
     postRecoveryGapPending: boolean;
     frameDeadline: ReturnType<typeof setTimeout> | null;
+    /** resync RPC 的响应上限；超时判定传输静默断链，不再无限等待。 */
+    rpcDeadline: ReturnType<typeof setTimeout> | null;
     /** 本次 flight 是为内容确定性失败发起的：终态用 contentRejected，不混进瞬态统计。 */
     contentFault: boolean;
   } | null = null;
@@ -328,6 +355,9 @@ export class ConversationProjectionStore {
   private planQueryPending = false;
   /** accepted input 的 projection confirmation watchdog；不承载命令，也不生成本地事实。 */
   private readonly acceptedInputProjectionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** 运行中帧静默看门狗；只在“权威投影仍在跑”时排期，见 LIVE_FRAME_STALL_GRACE_MS。 */
+  private liveStallTimer: ReturnType<typeof setTimeout> | null = null;
+  private liveStallAttempt = 0;
   // hydrated/not-enough-queries 终态缓存。过去仅以
   // logEpoch 判定有效，同一 epoch 内追加 real-user query 后仍永久命中。现追加
   // directoryRevision——real-user query 增删会递增该 revision，使终态失效重探测。
@@ -440,6 +470,17 @@ export class ConversationProjectionStore {
     };
     this.initialSubscribeAckAt = null;
     this.connectInFlight += 1;
+    const hadProjection = this.state.snapshot !== null;
+    const connectStallTimer = hadProjection
+      ? setTimeout(() => {
+          if (this.closed || generation !== this.generation) return;
+          if (this.state.status !== "connecting") return;
+          logger.warn(
+            `[v4-store] ${this.topic} 订阅重建超时 ${CONNECT_STALL_TIMEOUT_MS}ms，连接疑似静默断开`,
+          );
+          this.setState({ status: "error", lastError: CONNECT_STALL_ERROR });
+        }, CONNECT_STALL_TIMEOUT_MS)
+      : null;
     this.setState({ status: "connecting", rendererTiming: this.sessionOpenRendererTiming });
     try {
       const result = await this.transport.subscribe({
@@ -537,6 +578,7 @@ export class ConversationProjectionStore {
       logger.warn(`[v4-store] subscribe ${this.topic} 失败: ${message}`);
       this.setState({ status: "error", lastError: message });
     } finally {
+      if (connectStallTimer !== null) clearTimeout(connectStallTimer);
       this.connectInFlight -= 1;
     }
   }
@@ -717,6 +759,8 @@ export class ConversationProjectionStore {
         this.setState({ rendererTiming: this.sessionOpenRendererTiming });
       }
       if (context.recovery) this.markRecoveryFrameSeen();
+      // snapshot 只把计时归零：恢复用的强制 snapshot 可能只是重投同一份状态。
+      this.armLiveStallWatchdog({ resetBackoff: false });
       return;
     }
     const current = this.state.snapshot;
@@ -778,6 +822,8 @@ export class ConversationProjectionStore {
     this.reconcileAcceptedInputProjection(next);
     this.observeModelTransition(next, context.online);
     if (context.recovery) this.markRecoveryFrameSeen();
+    // 真实增量 = 真实进度，清空静默退避。
+    this.armLiveStallWatchdog({ resetBackoff: true });
     for (const listener of this.liveDeltaListeners) listener(frame.payload.deltas);
   }
 
@@ -871,6 +917,91 @@ export class ConversationProjectionStore {
     this.requestRecovery(recoveryFault);
   }
 
+  /**
+   * 权威投影是否仍在一轮运行中。control 是 CLI 投影的唯一权威：
+   * 不能从 rows 里反推“看起来还在跑”，否则终态裁剪后会把历史轮判成 running。
+   */
+  private isProjectionRunning(): boolean {
+    if (this.closed || this.state.status !== "live") return false;
+    const snapshot = this.state.snapshot;
+    if (!snapshot) return false;
+    const control = snapshot.control;
+    return control.phase === "running" || control.phase === "prewarming" || control.canStop;
+  }
+
+  /**
+   * 两种“预期静默”：provider 退避重试期间与等待用户授权期间，publisher 本来就不产帧。
+   * 这里只重排计时器、不发起恢复，避免把正常等待打成故障。
+   */
+  private expectsLiveSilence(snapshot: ConversationSnapshot): boolean {
+    return snapshot.control.apiRetry !== null || snapshot.pendingInteractions.length > 0;
+  }
+
+  private clearLiveStallWatchdog(): void {
+    if (this.liveStallTimer !== null) {
+      clearTimeout(this.liveStallTimer);
+      this.liveStallTimer = null;
+    }
+    this.liveStallAttempt = 0;
+  }
+
+  /**
+   * 每应用一帧后重排看门狗。
+   * resetBackoff 只在真实进度（deltas）时置真；recovery 的强制 snapshot 虽然也是“一帧”，
+   * 但可能只是把同一份状态重投一次，不能因此把慢工具的退避打回 30s 反复触发全量恢复。
+   */
+  private armLiveStallWatchdog(options: { resetBackoff: boolean }): void {
+    if (this.liveStallTimer !== null) {
+      clearTimeout(this.liveStallTimer);
+      this.liveStallTimer = null;
+    }
+    if (!this.isProjectionRunning()) {
+      this.liveStallAttempt = 0;
+      return;
+    }
+    if (options.resetBackoff) this.liveStallAttempt = 0;
+    const delayMs =
+      LIVE_FRAME_STALL_BACKOFF_MS[
+        Math.min(this.liveStallAttempt, LIVE_FRAME_STALL_BACKOFF_MS.length - 1)
+      ] ?? LIVE_FRAME_STALL_GRACE_MS;
+    this.liveStallTimer = setTimeout(() => {
+      this.liveStallTimer = null;
+      this.handleLiveFrameStall(delayMs);
+    }, delayMs);
+  }
+
+  private handleLiveFrameStall(silentMs: number): void {
+    if (!this.isProjectionRunning()) {
+      this.liveStallAttempt = 0;
+      return;
+    }
+    const snapshot = this.state.snapshot;
+    if (!snapshot) {
+      this.liveStallAttempt = 0;
+      return;
+    }
+    // 无论本轮是否发起恢复，下一次都按退避推进；真实 delta 到达时才归零。
+    this.liveStallAttempt = Math.min(
+      this.liveStallAttempt + 1,
+      LIVE_FRAME_STALL_BACKOFF_MS.length - 1,
+    );
+    if (this.expectsLiveSilence(snapshot) || this.recovery) {
+      // 预期静默或恢复已在途：让它自己收口，只重排。
+      this.armLiveStallWatchdog({ resetBackoff: false });
+      return;
+    }
+    logger.warn(`[v4-store] ${this.topic} 运行中帧静默 ${silentMs}ms，触发 same-sub 恢复`, {
+      event: "v4.conversation.store.live_frame_stall",
+      module: "ui.v4.conversation_projection_store",
+      phase: snapshot.control.phase,
+      seq: snapshot.seq,
+      status: "stalled",
+      topic: this.topic,
+    });
+    this.armLiveStallWatchdog({ resetBackoff: false });
+    this.requestRecovery();
+  }
+
   private requestRecovery(recoveryEvent = false, options: { contentFault?: boolean } = {}): void {
     if (this.closed) return;
     const subscriptionId = this.state.subscriptionId;
@@ -908,6 +1039,7 @@ export class ConversationProjectionStore {
       forceSnapshot: false,
       postRecoveryGapPending: false,
       frameDeadline: null,
+      rpcDeadline: null,
       contentFault,
     };
     this.recovery = recovery;
@@ -929,6 +1061,18 @@ export class ConversationProjectionStore {
     recovery.validFrameSeen = false;
     recovery.forceSnapshot = effectiveForceSnapshot;
     recovery.postRecoveryGapPending = false;
+    // 传输静默断链时 resync 的 Promise 永远不会 settle：既没有 fault 也没有帧，恢复流程
+    // 会把 store 永久卡在 recovery（后续看门狗看到 recovery 在途只会重排）。这里给 RPC
+    // 自身加响应上限，超时按“传输可能已死”重建订阅，交给 connect 的既有错误/退避路径收口。
+    recovery.rpcDeadline = setTimeout(() => {
+      recovery.rpcDeadline = null;
+      if (this.closed || this.recovery !== recovery) return;
+      this.recovery = null;
+      logger.warn(
+        `[v4-store] ${this.topic} resync RPC 超时 ${RECOVERY_RPC_TIMEOUT_MS}ms，传输疑似静默断链，重建订阅`,
+      );
+      void this.connect({ forceSnapshot: true });
+    }, RECOVERY_RPC_TIMEOUT_MS);
     void this.transport
       .resync({
         subscriptionId: recovery.subscriptionId,
@@ -940,6 +1084,7 @@ export class ConversationProjectionStore {
       })
       .then((result) => {
         if (this.closed || this.recovery !== recovery) return;
+        this.clearRecoveryDeadline(recovery);
         if (result.ack.subscriptionId !== recovery.subscriptionId) {
           throw new Error("fault.subscription.resyncGenerationMismatch");
         }
@@ -1007,9 +1152,14 @@ export class ConversationProjectionStore {
   private clearRecoveryDeadline(
     recovery: NonNullable<ConversationProjectionStore["recovery"]>,
   ): void {
-    if (!recovery.frameDeadline) return;
-    clearTimeout(recovery.frameDeadline);
-    recovery.frameDeadline = null;
+    if (recovery.frameDeadline) {
+      clearTimeout(recovery.frameDeadline);
+      recovery.frameDeadline = null;
+    }
+    if (recovery.rpcDeadline) {
+      clearTimeout(recovery.rpcDeadline);
+      recovery.rpcDeadline = null;
+    }
   }
 
   private discardRecovery(): void {
@@ -1418,6 +1568,7 @@ export class ConversationProjectionStore {
     this.offRuntimeRestart?.();
     this.offRuntimeLifecycle?.();
     this.clearRuntimeRecycleRetry();
+    this.clearLiveStallWatchdog();
     for (const timer of this.acceptedInputProjectionTimers.values()) clearTimeout(timer);
     this.acceptedInputProjectionTimers.clear();
     this.modelTransitionListeners.clear();

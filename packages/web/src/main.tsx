@@ -30,6 +30,7 @@ import {
   connectViaProtocol,
   connectViaWebSocket,
   createAcknowledgedWebRemoteControlRelayProtocol,
+  type WebSocketConnectionCloseEvent,
 } from "@zcode/client";
 
 import { WebCallbackPage } from "./auth/WebCallbackPage.js";
@@ -2028,6 +2029,47 @@ async function bootstrapExternalRelayWebRemoteControl(
   transport.start();
 }
 
+/**
+ * 本地 Web 的 socket 关闭回收。
+ *
+ * 连接一旦关闭，`connectViaWebSocket` 会 dispose ChannelClient，此后所有 RPC 必然 reject，
+ * 页面再也不可能拿到数据。旧实现这里是空回调，页面就停在最后一次投影上——表现为「卡住，
+ * 刷新后才看到内容」。本地 Web 的全部权威状态都在服务器侧，重载是最直接的恢复方式。
+ *
+ * 不担心重载风暴：重载后若服务器仍不可用，bootstrap 会渲染失败页且不再有 socket 可关闭，
+ * 循环自然终止。标签页在后台时不主动重载，避免用户切回来看到被刷空的页面。
+ */
+let webConnectionClosedReloadPending = false;
+function reloadAfterWebConnectionClose(event: WebSocketConnectionCloseEvent): void {
+  if (webConnectionClosedReloadPending) return;
+  if (event.wasClean && event.code === 1000) {
+    // 正常关闭（例如页面自身发起）：不需要恢复。
+    return;
+  }
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    // 后台标签页可能被浏览器冻结；此时重载既看不到也没意义，等切回前台再补。
+    webConnectionClosedReloadPending = true;
+    return;
+  }
+  webConnectionClosedReloadPending = true;
+  console.warn("[web] websocket closed, reloading to recover", {
+    code: event.code,
+    reason: event.reason,
+  });
+  window.location.reload();
+}
+
+/** 后台标签页的补位重载：连接已在后台断开时，切回前台立刻重建。 */
+function registerWebConnectionCloseVisibilityRecovery(): void {
+  if (typeof document === "undefined") return;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (!webConnectionClosedReloadPending) return;
+    console.warn("[web] websocket closed while hidden, reloading after visible");
+    window.location.reload();
+  });
+}
+
 async function bootstrapWebApp() {
   const params = new URLSearchParams(window.location.search);
   if (isWebRemoteControlRoute() || isWebRemoteControlOAuthCallback(new URL(window.location.href))) {
@@ -2063,9 +2105,10 @@ async function bootstrapWebApp() {
     return;
   }
 
+  registerWebConnectionCloseVisibilityRecovery();
   try {
     const services = await connectViaWebSocket(bootstrap.wsUrl, {
-      onClose: () => {},
+      onClose: reloadAfterWebConnectionClose,
     });
     const platform = createWebPlatform();
     document.title = "ZCode - Web + Server";
