@@ -193,3 +193,155 @@ test("ACK and a newer idle snapshot do not release before the accepted inputId a
     await close();
   }
 });
+
+test("truncated idle tail releases only after persisted accepted input is verified", async () => {
+  const { f, gate, leases, close } = await fixture();
+  let reads = 0;
+  const readSession: typeof f.agent.readSession = async (input) => {
+    reads++;
+    assert.equal(input.runtimePolicy, "existing-only");
+    return {
+      session: { sessionId: target.sessionId, status: "completed" },
+      projection: {
+        status: "completed",
+        pendingPermissions: [],
+        activeToolCalls: [],
+        backgroundJobs: [],
+      },
+      runtime: { pendingRequestIds: [] },
+      messages: [
+        { info: { role: "user", metadata: { inputIntent: { sourceCommandId: "A" } } }, parts: [] },
+      ],
+    } as Awaited<ReturnType<typeof f.agent.readSession>>;
+  };
+  f.agent.readSession = readSession;
+  try {
+    f.agent.sendConversationCommandV4 = async (input) => ({
+      commandId: input.envelope.commandId,
+      status: "accepted",
+      revisionAtDecision: 1,
+    });
+    const wrapped = gate.wrap(f.agent);
+    await wrapped.sendConversationCommandV4(send(target.sessionId));
+    assert.notEqual(await leases.get(target.workspacePath), null);
+    f.emit({
+      ...f.current,
+      seq: f.current.seq + 1,
+      control: { ...f.current.control, phase: "completedSuccess" },
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(reads, 1);
+    assert.equal(await leases.get(target.workspacePath), null);
+    await wrapped.sendConversationCommandV4(send("ordinary"));
+  } finally {
+    await close();
+  }
+});
+
+test("next write rechecks completed session when no more frames arrive", async () => {
+  const { f, gate, leases, close } = await fixture();
+  let allowRead = false;
+  f.agent.sendConversationCommandV4 = async (input) => ({
+    commandId: input.envelope.commandId,
+    status: "accepted",
+    revisionAtDecision: 1,
+  });
+  f.agent.readSession = async () => {
+    if (!allowRead) throw new Error("temporarily unavailable");
+    return {
+      session: { sessionId: target.sessionId, status: "completed" },
+      projection: {
+        status: "completed",
+        pendingPermissions: [],
+        activeToolCalls: [],
+        backgroundJobs: [],
+      },
+      runtime: { pendingRequestIds: [] },
+      messages: [
+        { info: { role: "user", metadata: { inputIntent: { sourceCommandId: "A" } } }, parts: [] },
+      ],
+    } as Awaited<ReturnType<typeof f.agent.readSession>>;
+  };
+  try {
+    const wrapped = gate.wrap(f.agent);
+    await wrapped.sendConversationCommandV4(send(target.sessionId));
+    f.emit({
+      ...f.current,
+      seq: f.current.seq + 1,
+      control: { ...f.current.control, phase: "completedSuccess" },
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.notEqual(await leases.get(target.workspacePath), null);
+    allowRead = true;
+    await wrapped.sendConversationCommandV4(send("ordinary"));
+    assert.equal((await leases.get(target.workspacePath))?.sessionId, "ordinary");
+  } finally {
+    await close();
+  }
+});
+
+test("truncated idle tail cannot release without durable input proof", async () => {
+  const { f, gate, leases, close } = await fixture();
+  try {
+    f.agent.sendConversationCommandV4 = async (input) => ({
+      commandId: input.envelope.commandId,
+      status: "accepted",
+      revisionAtDecision: 1,
+    });
+    f.agent.readSession = async () => {
+      throw new Error("read unavailable");
+    };
+    const wrapped = gate.wrap(f.agent);
+    await wrapped.sendConversationCommandV4(send(target.sessionId));
+    f.emit({
+      ...f.current,
+      seq: f.current.seq + 1,
+      control: { ...f.current.control, phase: "completedSuccess" },
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.notEqual(await leases.get(target.workspacePath), null);
+    await assert.rejects(wrapped.sendConversationCommandV4(send("ordinary")), /workspaceBusy/);
+  } finally {
+    await close();
+  }
+});
+
+test("persisted input proof does not override active runtime work", async () => {
+  const { f, gate, leases, close } = await fixture();
+  try {
+    f.agent.sendConversationCommandV4 = async (input) => ({
+      commandId: input.envelope.commandId,
+      status: "accepted",
+      revisionAtDecision: 1,
+    });
+    f.agent.readSession = async () =>
+      ({
+        session: { sessionId: target.sessionId, status: "running" },
+        projection: {
+          status: "running",
+          pendingPermissions: [],
+          activeToolCalls: [],
+          backgroundJobs: [],
+        },
+        runtime: { activeTurnId: "turn", pendingRequestIds: [] },
+        messages: [
+          {
+            info: { role: "user", metadata: { inputIntent: { sourceCommandId: "A" } } },
+            parts: [],
+          },
+        ],
+      }) as Awaited<ReturnType<typeof f.agent.readSession>>;
+    const wrapped = gate.wrap(f.agent);
+    await wrapped.sendConversationCommandV4(send(target.sessionId));
+    f.emit({
+      ...f.current,
+      seq: f.current.seq + 1,
+      control: { ...f.current.control, phase: "completedSuccess" },
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.notEqual(await leases.get(target.workspacePath), null);
+    await assert.rejects(wrapped.sendConversationCommandV4(send("ordinary")), /workspaceBusy/);
+  } finally {
+    await close();
+  }
+});

@@ -37,7 +37,7 @@ UI 经 ICrewService hook 读取投影和提交命令，不访问数据库，不�
 
 全局租约覆盖同库多 Host、多群和普通会话入口，不使用超时过期当作安全回收依据。
 仅能证明旧进程已退出或执行已安全终止才回收；无法证明时保留隔离并标记 recovery_required。
-ACK 仅代表输入接收，不承诺 TurnStarted 已进入投影。释放租约前必须观察到本次 inputId/sourceCommandId 的权威执行行（仅 queue item 不算）；同时使用 ACK 后新建的独立订阅及其 initial snapshot 建立读取屏障；旧 subscriptionId、旧 epoch、倒退 seq 和缺帧不能证明空闲。明确拒绝只恢复前一次证明，传输未知/failed 不解除隔离。
+ACK 仅代表输入接收，不承诺 TurnStarted 已进入投影。释放租约前必须观察到本次 inputId/sourceCommandId 的权威执行行（仅 queue item 不算）；同时使用 ACK 后新建的独立订阅及其 initial snapshot 建立读取屏障；旧 subscriptionId、旧 epoch、倒退 seq 和缺帧不能证明空闲。若已完成输入的权威行因 60 行尾窗截断而不可见，允许在 ACK 后新订阅的空闲投影下，使用同一现存 CLI 的只读会话快照中已持久化的 inputIntent.sourceCommandId 逐一核对未确认输入，并再次核对投影仍为空闲后释放；读取失败、缺失或执行未终止均保持隔离；尾窗不再产生新帧时，下次写入在同一 workspace 串行准入内再次核对，不以超时或任务列表状态替代证明。明确拒绝只恢复前一次证明，传输未知/failed 不解除隔离。
 旧执行结果不得修改新 token 的租约或新绑定纪元。队列重启可恢复未启动项；已启动写任务绝不自动重放。
 Desktop continuous 与 Web replayable 仍走既有 session 执行与 owner 路由；群板为独立持久投影，不替代 session stream/snapshot。
 P0 不引入手机专属 Agent、Host 或新远程会话；不支持的远程能力需显式拒绝而非路径 fallback。

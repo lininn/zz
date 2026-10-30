@@ -38,6 +38,7 @@ export function needsCrewWriteAdmission(envelope: CommandEnvelope): boolean {
 }
 interface Entry {
   lease: CrewWorkspaceLease;
+  target: ZCodeAgentSessionTarget;
   monitor?: CrewAdmissionMonitor;
   verifiedAfterAck: boolean;
   pendingInputs: Set<string>;
@@ -85,6 +86,10 @@ export class CrewWriteAdmission {
     return this.serial(key, async () => {
       if (this.closed) throw new Error("crew.serviceClosed");
       await this.reapDeadEntry(key);
+      // Bugfix：长会话的输入行已滑出订阅尾窗时，不再有新的投影帧触发释放。
+      // 下一次写入先用本租约的权威终态重验，避免已完成任务永久挡住普通会话。
+      const held = this.entries.get(key);
+      if (held) await this.releaseIfQuiescent(key, held);
       let entry = this.entries.get(key);
       const newlyAcquired = !entry;
       if (entry?.interrupted) throw new Error("crew.recoveryRequired");
@@ -108,7 +113,13 @@ export class CrewWriteAdmission {
           throw new Error("crew.serviceClosed");
         }
         this.terminalPhases.delete(`${key}\0${target.sessionId}`);
-        entry = { lease, verifiedAfterAck: false, pendingInputs: new Set(), idleWaiters: [] };
+        entry = {
+          lease,
+          target,
+          verifiedAfterAck: false,
+          pendingInputs: new Set(),
+          idleWaiters: [],
+        };
         this.entries.set(key, entry);
         if (!options.createsSession) {
           try {
@@ -161,6 +172,7 @@ export class CrewWriteAdmission {
 
   private async observe(entry: Entry, target: ZCodeAgentSessionTarget): Promise<void> {
     entry.monitor?.dispose();
+    entry.target = target;
     entry.monitor = new CrewAdmissionMonitor(this.agent, target, () => {
       // Core ACK 可能早于 TurnStarted；必须观察到本次 inputId 的权威行。
       // 仅见 queue item 不算开始：promote 移除队列到建立 turn 之间仍可能有空窗。
@@ -174,30 +186,65 @@ export class CrewWriteAdmission {
   }
 
   private scheduleRelease(key: string, entry: Entry): void {
-    void this.serial(key, async () => {
-      if (this.closed || this.entries.get(key) !== entry) return;
-      const snapshot = entry.monitor?.snapshot;
-      if (
-        !snapshot ||
-        !entry.verifiedAfterAck ||
-        entry.pendingInputs.size > 0 ||
-        !isCrewWorkspaceQuiescent(snapshot)
-      )
-        return;
-      if (!(await this.leases.release(entry.lease))) {
-        entry.interrupted = true;
-        for (const waiter of entry.idleWaiters) waiter.reject(new Error("crew.recoveryRequired"));
-        entry.idleWaiters = [];
+    void this.serial(key, () => this.releaseIfQuiescent(key, entry)).catch(() =>
+      log.warn(undefined, "群组写租约收口失败，保持隔离"),
+    );
+  }
+
+  private async releaseIfQuiescent(key: string, entry: Entry): Promise<void> {
+    if (this.closed || this.entries.get(key) !== entry || entry.interrupted) return;
+    const snapshot = entry.monitor?.snapshot;
+    if (!snapshot || !entry.verifiedAfterAck || !isCrewWorkspaceQuiescent(snapshot)) return;
+    if (entry.pendingInputs.size > 0) {
+      // Bugfix：订阅只保留尾部 60 行，长会话的 inputId 行被截断后，旧逻辑会
+      // 永久保留租约。只从同一个现存 CLI 读取持久化的输入归因；失败或不确定时不放锁。
+      try {
+        const result = await this.agent.readSession({
+          ...entry.target,
+          sessionId: entry.lease.sessionId,
+          runtimePolicy: "existing-only",
+        });
+        if (
+          result.session.sessionId !== entry.lease.sessionId ||
+          !["completed", "error"].includes(result.session.status) ||
+          result.projection.status !== result.session.status ||
+          result.runtime.activeTurnId ||
+          result.runtime.pendingRequestIds.length > 0 ||
+          result.projection.pendingPermissions.length > 0 ||
+          result.projection.activeToolCalls.length > 0 ||
+          result.projection.backgroundJobs.length > 0
+        )
+          return;
+        const persisted = new Set(
+          result.messages.flatMap((message) => {
+            if (message.info.role !== "user") return [];
+            const intent = message.info.metadata?.inputIntent;
+            if (!intent || typeof intent !== "object" || Array.isArray(intent)) return [];
+            const id = (intent as Record<string, unknown>).sourceCommandId;
+            return typeof id === "string" ? [id] : [];
+          }),
+        );
+        if ([...entry.pendingInputs].some((id) => !persisted.has(id))) return;
+        // readSession 是异步的：期间一旦出现新帧或写入，必须重新走准入判定。
+        if (entry.monitor?.snapshot !== snapshot || !entry.verifiedAfterAck) return;
+        entry.pendingInputs.clear();
+      } catch {
         return;
       }
-      const terminalKey = `${key}\0${entry.lease.sessionId}`;
-      this.terminalPhases.set(terminalKey, snapshot.control.phase);
-      if (this.terminalPhases.size > 128)
-        this.terminalPhases.delete(this.terminalPhases.keys().next().value!);
-      this.entries.delete(key);
-      entry.monitor?.dispose();
-      for (const waiter of entry.idleWaiters) waiter.resolve(snapshot.control.phase);
-    }).catch(() => log.warn(undefined, "群组写租约收口失败，保持隔离"));
+    }
+    if (!(await this.leases.release(entry.lease))) {
+      entry.interrupted = true;
+      for (const waiter of entry.idleWaiters) waiter.reject(new Error("crew.recoveryRequired"));
+      entry.idleWaiters = [];
+      return;
+    }
+    const terminalKey = `${key}\0${entry.lease.sessionId}`;
+    this.terminalPhases.set(terminalKey, snapshot.control.phase);
+    if (this.terminalPhases.size > 128)
+      this.terminalPhases.delete(this.terminalPhases.keys().next().value!);
+    this.entries.delete(key);
+    entry.monitor?.dispose();
+    for (const waiter of entry.idleWaiters) waiter.resolve(snapshot.control.phase);
   }
 
   async cancelSafely(target: ZCodeAgentSessionTarget, stop: () => Promise<void>): Promise<void> {
